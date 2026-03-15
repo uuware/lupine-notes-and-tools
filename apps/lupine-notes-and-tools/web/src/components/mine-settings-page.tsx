@@ -13,7 +13,6 @@ import {
 } from 'lupine.components';
 import { MineService } from '../services/mine-service';
 import { MineAboutPage } from './mine-about-page';
-import { MineSupportPage } from './mine-support-page';
 
 export const MineSettingsPage = (props: { sliderFrameHook: SliderFrameHookProps; onDataChanged: () => void }) => {
   const innerSliderHook: SliderFrameHookProps = {};
@@ -214,13 +213,7 @@ export const MineSettingsPage = (props: { sliderFrameHook: SliderFrameHookProps;
         <div class='setting-section-group'>
           <div class='setting-section-title'>Application</div>
           <div class='setting-section-block'>
-            <a
-              class='setting-section-item'
-              href='javascript:void(0)'
-              onClick={() => {
-                innerSliderHook.load!(<MineSupportPage sliderFrameHook={innerSliderHook} />);
-              }}
-            >
+            <a class='setting-section-item' href='mailto:support@lupine.js?subject=App%20Feedback'>
               <div class='setting-section-item-text'>Feedback & Support</div>
               <div class='setting-section-item-icon'>
                 <i class='ifc-icon ma-chevron-right' />

@@ -5,6 +5,11 @@
       "index": "web/src/index.tsx",
       "html": "web/src/index.html",
       "outdir": "/"
+    },
+    {
+      "index": "web/src/lupine-notes-and-tools/index.tsx",
+      "html": "web/src/lupine-notes-and-tools/index.html",
+      "outdir": "/lupine-notes-and-tools"
     }
   ],
   "apiEntryPoint": "api/src/index.ts",
@@ -13,6 +18,11 @@
       "type": "web",
       "from": "web/assets",
       "to": "assets"
+    },
+    {
+      "type": "web",
+      "from": "web/src/lupine-notes-and-tools/404.html",
+      "to": "lupine-notes-and-tools/404.html"
     },
     {
       "type": "data",

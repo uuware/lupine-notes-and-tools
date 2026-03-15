@@ -3,8 +3,8 @@ import { MediaQueryMaxWidth, ResponsiveFrame, SliderFrame, SliderFrameHookProps 
 import { SideMenuContent } from '../components/side-menu-content';
 
 // Note: Replace with true site config loading if available
-const getSiteTitle = async () => 'Lupine Notes & Tools';
-const getSiteFooter = async () => '© 2026 Lupine Notes & Tools';
+const getSiteTitle = async () => 'My Note App';
+const getSiteFooter = async () => '© 2026 My Note App';
 
 export const AppResponsiveFrame = async (placeholderClassname: string, vnode: VNode<any>) => {
   const mobileBottomMenu = [
@@ -34,8 +34,8 @@ export const AppResponsiveFrame = async (placeholderClassname: string, vnode: VN
       <SideMenuContent
         navItems={layout === 'sidebar' ? mobileBottomMenu : undefined}
         settingSliderHook={sliderFrameHook}
-        title='Lupine Notes & Tools'
-        footer='Powered by <a href="https://github.com/uuware/lupine.js">Lupine.js</a>'
+        title='My Note App'
+        footer='Powered by Lupine.js'
       />
     ),
     maxWidth: MediaQueryMaxWidth.DesktopMax,

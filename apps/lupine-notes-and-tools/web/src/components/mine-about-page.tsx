@@ -57,16 +57,23 @@ export const MineAboutPage = (props: { sliderFrameHook: SliderFrameHookProps }) 
     },
   };
 
+  const textContent = `This is a demo application built for the full-stack framework Lupine.js.
+Using this template alongside AI, you can rapidly build and deploy cross-platform applications.`;
+
   return (
     <HeaderWithBackFrame title='About' onBack={(e: Event) => props.sliderFrameHook.close!(e)}>
       <div css={css} class='about-page-wrapper no-scrollbar-container flex-col h-100'>
         <div class='about-logo'>
           <i class='ifc-icon ma-text-box-outline'></i>
         </div>
-        <div class='about-title'>Lupine Notes & Tools</div>
+        <div class='about-title'>Lupine Note Starter</div>
         <div class='about-version'>Version 1.0.0</div>
 
-        <div class='about-content'>This is a demo application built for the full-stack framework Lupine.js.</div>
+        <div class='about-content'>{textContent}</div>
+
+        <a class='about-link' href='https://github.com/uuware/lupine.js' target='_blank'>
+          Learn More
+        </a>
       </div>
     </HeaderWithBackFrame>
   );

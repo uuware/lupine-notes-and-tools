@@ -1,6 +1,40 @@
 {
   "name": "lupine-notes-and-tools-web",
   "version": "1.0.0",
-  "dependencies": {},
-  "devDependencies": {}
+  "scripts": {
+    "build-win": "electron-builder --win --config electron/builder.json",
+    "build-linux": "electron-builder --linux --config electron/builder.json",
+    "build-mac": "export CSC_IDENTITY_AUTO_DISCOVERY=true && electron-builder --mac --x64 --config electron/builder.json",
+    "start-desktop": "electron .",
+    "sync": "npx cap sync",
+    "open-ios": "npx cap open ios",
+    "open-android": "npx cap open android",
+    "run-ios": "npx cap run ios",
+    "run-android": "npx cap run android",
+    "run-electron": "electron .",
+    "build:mac": "electron-builder build --mac",
+    "build:linux": "electron-builder build --linux",
+    "build:win": "electron-builder build --win"
+  },
+  "dependencies": {
+    "@alicloud/pop-core": "^1.8.0",
+    "@capacitor-community/keep-awake": "^7.0.0",
+    "@capacitor-community/media": "^8.0.1",
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/camera": "^8.0.0",
+    "@capacitor/cli": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/device": "^8.0.0",
+    "@capacitor/filesystem": "^8.0.0",
+    "@capacitor/haptics": "^8.0.0",
+    "@capacitor/ios": "^8.0.0",
+    "@capacitor/share": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0",
+    "audio-loader": "^0.5.0",
+    "cordova-plugin-purchase": "^13.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5"
+  }
 }

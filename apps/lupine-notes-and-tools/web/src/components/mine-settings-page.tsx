@@ -13,12 +13,21 @@ import {
 } from 'lupine.components';
 import { MineService } from '../services/mine-service';
 import { MineAboutPage } from './mine-about-page';
+import { StorageManager } from '../services/cloud/storage-manager';
+import { CloudConfigSliderPage } from './cloud-config/cloud-config-slider-page';
+import { LoadingSpin } from '../components/loading-spin';
 
 export const MineSettingsPage = (props: { sliderFrameHook: SliderFrameHookProps; onDataChanged: () => void }) => {
   const innerSliderHook: SliderFrameHookProps = {};
 
-  const onExport = () => {
-    const dataStr = MineService.exportBackup();
+  const onExport = async () => {
+    const closeLoading = await LoadingSpin.show();
+    let dataStr = '';
+    try {
+      dataStr = await MineService.exportBackup();
+    } finally {
+      closeLoading();
+    }
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -38,10 +47,13 @@ export const MineSettingsPage = (props: { sliderFrameHook: SliderFrameHookProps;
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         const content = e.target?.result as string;
         if (content) {
-          const success = MineService.importBackup(content);
+          const closeLoading = await LoadingSpin.show();
+          const success = await MineService.importBackup(content);
+          closeLoading();
+
           if (success) {
             NotificationMessage.sendMessage('Data imported successfully!', NotificationColor.Success);
             props.onDataChanged();
@@ -63,33 +75,36 @@ export const MineSettingsPage = (props: { sliderFrameHook: SliderFrameHookProps;
       handleClicked: async (index: number, close: () => void) => {
         close();
         if (index === 0) {
-          MineService.clearAllData();
+          const closeLoading = await LoadingSpin.show();
+          await MineService.clearAllData();
+          closeLoading();
+          NotificationMessage.sendMessage('All data has been cleared.', NotificationColor.Success);
           props.onDataChanged();
         }
       },
     });
   };
 
-  const onClearCache = async () => {
-    // Fake mock loading for UX
-    const loader = document.createElement('div');
-    loader.style.position = 'fixed';
-    loader.style.top = '50%';
-    loader.style.left = '50%';
-    loader.style.transform = 'translate(-50%, -50%)';
-    loader.style.background = 'rgba(0,0,0,0.8)';
-    loader.style.color = '#fff';
-    loader.style.padding = '16px 24px';
-    loader.style.borderRadius = '8px';
-    loader.style.zIndex = '9999';
-    loader.innerText = 'Clearing cache...';
-    document.body.appendChild(loader);
+  // const onClearCache = async () => {
+  //   // Fake mock loading for UX
+  //   const loader = document.createElement('div');
+  //   loader.style.position = 'fixed';
+  //   loader.style.top = '50%';
+  //   loader.style.left = '50%';
+  //   loader.style.transform = 'translate(-50%, -50%)';
+  //   loader.style.background = 'rgba(0,0,0,0.8)';
+  //   loader.style.color = '#fff';
+  //   loader.style.padding = '16px 24px';
+  //   loader.style.borderRadius = '8px';
+  //   loader.style.zIndex = '9999';
+  //   loader.innerText = 'Clearing cache...';
+  //   document.body.appendChild(loader);
 
-    setTimeout(() => {
-      document.body.removeChild(loader);
-      NotificationMessage.sendMessage('Cache cleared.', NotificationColor.Success);
-    }, 800);
-  };
+  //   setTimeout(() => {
+  //     document.body.removeChild(loader);
+  //     NotificationMessage.sendMessage('Cache cleared.', NotificationColor.Success);
+  //   }, 800);
+  // };
 
   const renderContent = () => {
     const css: CssProps = {
@@ -153,7 +168,7 @@ export const MineSettingsPage = (props: { sliderFrameHook: SliderFrameHookProps;
     };
 
     return (
-      <div css={css} ref={ref} class='user-settings-top'>
+      <div css={css} ref={ref} class='user-settings-top no-scrollbar-container'>
         <div class='setting-section-group'>
           <div class='setting-section-title'>App Layout</div>
           <div class='setting-section-block'>
@@ -193,6 +208,49 @@ export const MineSettingsPage = (props: { sliderFrameHook: SliderFrameHookProps;
         </div>
 
         <div class='setting-section-group'>
+          <div class='setting-section-title'>Data Storage & Sync</div>
+          <div class='setting-section-block'>
+            <div
+              class='setting-section-item'
+              onClick={async () => {
+                innerSliderHook.load!(<CloudConfigSliderPage sliderFrameHook={innerSliderHook} />);
+                // Re-render settings block in case they saved and switched provider upon returning
+                const iv = setInterval(() => {
+                  dom.value = renderContent();
+                }, 1500);
+                setTimeout(() => clearInterval(iv), 60000);
+              }}
+            >
+              <div class='setting-section-item-text'>
+                <div style={{ fontWeight: 'bold' }}>Sync Provider</div>
+                <div style={{ fontSize: '14px', color: 'var(--secondary-color)', marginTop: '4px' }}>
+                  {StorageManager.getActiveProvider().name}
+                </div>
+              </div>
+              <div class='setting-section-item-icon'>
+                <i class='ifc-icon ma-chevron-right' />
+              </div>
+            </div>
+
+            <div
+              class='setting-section-item'
+              onClick={async () => {
+                const close = await LoadingSpin.show();
+                await StorageManager.initialize(true);
+                close();
+                NotificationMessage.sendMessage('Synced from cloud!', NotificationColor.Success);
+                props.onDataChanged();
+              }}
+            >
+              <div class='setting-section-item-text'>Force Sync from Cloud</div>
+              <div class='setting-section-item-icon'>
+                <i class='ifc-icon ma-cloud-sync' />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class='setting-section-group'>
           <div class='setting-section-title'>Data Backup</div>
           <div class='setting-section-block'>
             <div class='setting-section-item' onClick={onExport}>
@@ -213,7 +271,7 @@ export const MineSettingsPage = (props: { sliderFrameHook: SliderFrameHookProps;
         <div class='setting-section-group'>
           <div class='setting-section-title'>Application</div>
           <div class='setting-section-block'>
-            <a class='setting-section-item' href='mailto:support@lupine.js?subject=App%20Feedback'>
+            {/* <a class='setting-section-item' href='mailto:support@lupine.js?subject=App%20Feedback'>
               <div class='setting-section-item-text'>Feedback & Support</div>
               <div class='setting-section-item-icon'>
                 <i class='ifc-icon ma-chevron-right' />
@@ -224,7 +282,7 @@ export const MineSettingsPage = (props: { sliderFrameHook: SliderFrameHookProps;
               <div class='setting-section-item-icon'>
                 <i class='ifc-icon ma-chevron-right' />
               </div>
-            </div>
+            </div> */}
             <div
               class='setting-section-item'
               onClick={() => {
@@ -233,7 +291,7 @@ export const MineSettingsPage = (props: { sliderFrameHook: SliderFrameHookProps;
                 innerSliderHook.load!(<MineAboutPage sliderFrameHook={innerSliderHook} />);
               }}
             >
-              <div class='setting-section-item-text'>About</div>
+              <div class='setting-section-item-text'>Feedback & Support</div>
               <div class='setting-section-item-icon'>
                 <i class='ifc-icon ma-chevron-right' />
               </div>

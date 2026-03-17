@@ -1,0 +1,7 @@
+{
+  "name": "lupine-notes-and-tools-web",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "custom"
+}

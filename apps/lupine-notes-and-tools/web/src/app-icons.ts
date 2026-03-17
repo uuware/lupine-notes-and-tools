@@ -45,6 +45,7 @@ export const appIcons = {
   // Settings Utility Icons
   'ma-download': `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24'%3E%3Cpath fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3'/%3E%3C/svg%3E`,
   'ma-upload': `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24'%3E%3Cpath fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12'/%3E%3C/svg%3E`,
+  'ma-cloud-sync': `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24'%3E%3Cpath fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M19 12h-1.02a8 8 0 00-15.08 0H2a2 2 0 00-2 2v6a2 2 0 002 2h17a2 2 0 002-2v-6a2 2 0 00-2-2zm-6.5-6a6 6 0 014.28 1.83l-1.59 1.59h5v-5l-1.77 1.77A8 8 0 0012 4v2zM6 14h1v3H6v-3zm3 0h1v3H9v-3zm3 0h1v3h-1v-3z'/%3E%3C/svg%3E`,
   'ma-chevron-right': `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24'%3E%3Cpath fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M9 18l6-6-6-6'/%3E%3C/svg%3E`,
   'ma-chevron-left': `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24'%3E%3Cpath fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M15 18l-6-6 6-6'/%3E%3C/svg%3E`,
   'ma-delete-outline': `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24'%3E%3Cpath fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14M10 11v6M14 11v6'/%3E%3C/svg%3E`,
@@ -58,6 +59,9 @@ export const appIconsCss: CssProps = {
     maskRepeat: 'no-repeat',
     maskPosition: 'center',
     maskSize: 'contain',
+    '-webkit-mask-repeat': 'no-repeat',
+    '-webkit-mask-position': 'center',
+    '-webkit-mask-size': 'contain',
     WebkitMaskRepeat: 'no-repeat',
     WebkitMaskPosition: 'center',
     WebkitMaskSize: 'contain',
@@ -65,6 +69,7 @@ export const appIconsCss: CssProps = {
   },
   ...Object.entries(appIcons).reduce((acc: any, [key, svg]) => {
     acc['.ifc-icon.' + key] = {
+      '-webkit-mask-image': 'url("' + svg + '")',
       maskImage: 'url("' + svg + '")',
     };
     return acc;

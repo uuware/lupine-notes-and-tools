@@ -319,11 +319,11 @@ export const FinanceEditComponent = (props: {
 
   return (
     <HeaderWithBackFrame
-      title={isEdit ? '编辑记账' : '添加记账'}
+      title={isEdit ? 'Edit Finance' : 'Add Finance'}
       onBack={(e: Event) => props.sliderFrameHook.close!(e)}
       right={
         <div class='finance-header-save' onClick={onSave}>
-          保存
+          Save
         </div>
       }
     >

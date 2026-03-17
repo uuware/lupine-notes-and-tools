@@ -15,45 +15,43 @@ export interface LocalFinanceProps {
   orderIndex?: number;
 }
 
-class LocalFinanceServiceCls {
-  private readonly STORAGE_KEY = 'lj_finances';
+import { StorageManager } from './cloud/storage-manager';
 
-  getAllRecords(): LocalFinanceProps[] {
+class LocalFinanceServiceCls {
+  getAllRecords(): Partial<LocalFinanceProps>[] {
     try {
-      const dataStr = localStorage.getItem(this.STORAGE_KEY);
-      if (dataStr) {
-        let records: LocalFinanceProps[] = JSON.parse(dataStr);
-        records.sort((a, b) => {
+      let recordsList = [...StorageManager.getCategoryList('financesList')];
+        recordsList.sort((a, b) => {
           if (a.orderIndex !== undefined && b.orderIndex !== undefined) {
             return a.orderIndex - b.orderIndex;
           }
-          return b.updatedAt - a.updatedAt;
+          return b.updatedAt! - a.updatedAt!;
         });
-        return records;
-      }
+        return recordsList;
     } catch (e) {
-      console.error('Failed to parse local finances', e);
+      console.error('Failed to parse local finances list', e);
     }
     return [];
   }
 
-  saveRecord(record: Partial<LocalFinanceProps> & { id?: number }): LocalFinanceProps {
-    const records = this.getAllRecords();
+  async saveRecord(record: Partial<LocalFinanceProps> & { id?: number }): Promise<LocalFinanceProps> {
+    const list = this.getAllRecords();
     const now = Date.now();
     let existingIndex = -1;
 
     if (record.id) {
-      existingIndex = records.findIndex((r) => r.id === record.id);
+      existingIndex = list.findIndex((r) => r.id === record.id);
     }
 
+    let finalRecord: LocalFinanceProps;
+
     if (existingIndex >= 0) {
-      const existing = records[existingIndex];
-      const updated = { ...existing, ...record, updatedAt: now };
-      records[existingIndex] = updated as LocalFinanceProps;
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(records));
-      return updated;
+      const existingMeta = list[existingIndex];
+      // Since existing is only metadata in the list, we MUST merge the new record with the lazy loaded full body
+      const existingFull = await this.getRecordById(existingMeta.id!) || existingMeta; 
+      finalRecord = { ...existingFull, ...record, updatedAt: now } as LocalFinanceProps;
     } else {
-      const newRecord: LocalFinanceProps = {
+      finalRecord = {
         id: record.id || now,
         title: record.title || '',
         date: record.date || '',
@@ -64,31 +62,48 @@ class LocalFinanceServiceCls {
         updatedAt: now,
         orderIndex: record.orderIndex || now,
       };
-      records.unshift(newRecord);
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(records));
-      return newRecord;
+    }
+
+    const listMetadata: Partial<LocalFinanceProps> = {
+       id: finalRecord.id,
+       title: finalRecord.title,
+       date: finalRecord.date,
+       time: finalRecord.time,
+       color: finalRecord.color,
+       updatedAt: finalRecord.updatedAt,
+       orderIndex: finalRecord.orderIndex
+    };
+
+    await StorageManager.saveItem('finances', 'financesList', finalRecord, listMetadata);
+    return finalRecord;
+  }
+
+  async deleteRecord(id: number) {
+    let list = this.getAllRecords();
+    const len = list.length;
+    list = list.filter((r) => r.id !== id);
+    
+    if (list.length !== len) {
+       StorageManager.getCategoryList('financesList').splice(0, len, ...list); 
+       await StorageManager.getActiveProvider().writeCategoryList('finances', list);
+       await StorageManager.getActiveProvider().deleteItem('finances', id.toString());
     }
   }
 
-  deleteRecord(id: number) {
-    const records = this.getAllRecords();
-    const filtered = records.filter((r) => r.id !== id);
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filtered));
+  async getRecordById(id: number): Promise<LocalFinanceProps | undefined> {
+    return await StorageManager.readItem('finances', id.toString());
   }
 
-  getRecordById(id: number): LocalFinanceProps | undefined {
-    return this.getAllRecords().find((r) => r.id === id);
-  }
-
-  updateRecordOrders(orderedIds: number[]) {
-    const records = this.getAllRecords();
+  async updateRecordOrders(orderedIds: number[]) {
+    const list = this.getAllRecords();
     orderedIds.forEach((id, index) => {
-      const record = records.find((r) => r.id === id);
-      if (record) {
-        record.orderIndex = index;
+      const recordMeta = list.find((r) => r.id === id);
+      if (recordMeta) {
+        recordMeta.orderIndex = index;
       }
     });
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(records));
+    
+    await StorageManager.getActiveProvider().writeCategoryList('finances', list);
   }
 }
 

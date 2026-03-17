@@ -15,6 +15,7 @@ import {
 } from 'lupine.components';
 import { NoteSearchComponent } from '../components/note-search-page';
 import { LocalNoteProps, LocalNotesService } from '../services/local-notes-service';
+import { StorageManager } from '../services/cloud/storage-manager';
 import { NoteEditComponent } from '../components/note-edit';
 import { NoteDetailComponent } from '../components/note-detail';
 
@@ -42,13 +43,13 @@ export const HomePage = async (props: PageProps) => {
     resetSwipeMenus();
   };
 
-  const onEditNote = (note: LocalNoteProps) => {
-    sliderFrameHook.load!(<NoteEditComponent note={note} sliderFrameHook={sliderFrameHook} onSaved={refreshList} />);
+  const onEditNote = (note: Partial<LocalNoteProps>) => {
+    sliderFrameHook.load!(<NoteEditComponent note={note as LocalNoteProps} sliderFrameHook={sliderFrameHook} onSaved={refreshList} />);
   };
 
-  const onViewNote = (note: LocalNoteProps) => {
+  const onViewNote = (note: Partial<LocalNoteProps>) => {
     resetSwipeMenus();
-    sliderFrameHook.load!(<NoteDetailComponent note={note} sliderFrameHook={sliderFrameHook} onSaved={refreshList} />);
+    sliderFrameHook.load!(<NoteDetailComponent note={note as LocalNoteProps} sliderFrameHook={sliderFrameHook} onSaved={refreshList} />);
   };
 
   const onDeleteNote = async (id: number, e: Event) => {
@@ -218,8 +219,8 @@ export const HomePage = async (props: PageProps) => {
     const filteredNotes = currentSearchQuery
       ? allNotes.filter(
           (n) =>
-            n.title.toLowerCase().includes(currentSearchQuery.toLowerCase()) ||
-            n.content.toLowerCase().includes(currentSearchQuery.toLowerCase())
+            (n.title && n.title.toLowerCase().includes(currentSearchQuery.toLowerCase())) ||
+            (n.content && n.content.toLowerCase().includes(currentSearchQuery.toLowerCase()))
         )
       : allNotes;
 
@@ -230,7 +231,7 @@ export const HomePage = async (props: PageProps) => {
 
     dom.value = (
       <div class='note-list-container' style={{ position: 'relative' }}>
-        {filteredNotes.map((note) => (
+        {filteredNotes.map((note: Partial<LocalNoteProps>) => (
           <div class='note-card-wrapper'>
             <div class='note-card-actions-layer'>
               <div
@@ -245,7 +246,7 @@ export const HomePage = async (props: PageProps) => {
               <div
                 class='action-btn delete-btn'
                 onClick={(e) => {
-                  onDeleteNote(note.id, e);
+                  onDeleteNote(note.id!, e);
                 }}
               >
                 <i class='ifc-icon ma-delete-off-outline' />
@@ -256,12 +257,12 @@ export const HomePage = async (props: PageProps) => {
               style={{ borderLeft: note.color ? `6px solid ${note.color}` : '' }}
               data-id={note.id}
               onMouseDown={(e) => {
-                resetSwipeMenus(note.id);
+                resetSwipeMenus(note.id!);
                 draggedAmount = 0;
                 dragUtil.onMouseDown(e);
               }}
               onTouchStart={(e) => {
-                resetSwipeMenus(note.id);
+                resetSwipeMenus(note.id!);
                 draggedAmount = 0;
                 dragUtil.onTouchStart(e);
               }}
@@ -286,8 +287,8 @@ export const HomePage = async (props: PageProps) => {
             >
               <div class='note-card-content flex-1' style={{ minWidth: 0 }}>
                 <div class='note-card-title'>{note.title}</div>
-                <div class='note-card-preview ellipsis'>{extractText(note.content)}</div>
-                <div class='note-card-date'>{new Date(note.updatedAt).toLocaleString()}</div>
+                <div class='note-card-preview ellipsis'>{extractText(note.content || '')}</div>
+                <div class='note-card-date'>{note.updatedAt ? new Date(note.updatedAt).toLocaleString() : ''}</div>
               </div>
               <div
                 class='note-card-drag-handle'
@@ -311,6 +312,7 @@ export const HomePage = async (props: PageProps) => {
 
   const ref: RefProps = {
     onLoad: async () => {
+      await StorageManager.waitForInit();
       refreshList();
     },
   };

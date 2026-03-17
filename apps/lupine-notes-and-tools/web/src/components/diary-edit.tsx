@@ -6,26 +6,56 @@ import {
   SliderFrameHookProps,
   HeaderWithBackFrame,
   ActionSheetColorPicker,
+  HtmlVar
 } from 'lupine.components';
 import { LocalDiaryProps, LocalDiaryService } from '../services/local-diary-service';
 
 export const DiaryEditComponent = (props: {
   date: string;
-  diary?: LocalDiaryProps;
+  diary?: Partial<LocalDiaryProps>; // The list metadata passed in
   sliderFrameHook: SliderFrameHookProps;
   onSaved: () => void;
 }) => {
   const isEdit = !!props.diary;
-  const diaryId = props.diary ? props.diary.id : -1;
+  const diaryId = props.diary ? props.diary.id! : -1;
   const defaultTitle = props.diary ? props.diary.title : '';
-  const defaultContent = props.diary ? props.diary.content : '';
+
+  let loading = isEdit;
+  let fullText = '';
+
+  const loadingDom = new HtmlVar(
+    <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--secondary-color)' }}>
+      <i class="ifc-icon ma-cloud-sync" style={{ fontSize: '24px', marginRight: '8px', animation: 'spin 1s linear infinite' }} />
+      Loading from Cloud...
+    </div>
+  );
+
+  const loadFullDiary = async () => {
+    if (isEdit && diaryId > 0) {
+      const fullDiary = await LocalDiaryService.getDiaryById(diaryId);
+      fullText = fullDiary?.content || '';
+    } else {
+      fullText = '';
+    }
+
+    loading = false;
+    loadingDom.value = (
+      <textarea class='input-base diary-edit-body-input' placeholder='Write your diary...'>
+        {fullText}
+      </textarea>
+    );
+
+    if (!isEdit) {
+      setTimeout(() => {
+        const tInput = ref.$('.diary-edit-title-input') as HTMLInputElement;
+        tInput?.focus();
+      }, 50);
+    }
+  };
 
   const ref: RefProps = {
     onLoad: async () => {
-      if (!isEdit) {
-        const tInput = ref.$('.diary-edit-title-input') as HTMLInputElement;
-        tInput?.focus();
-      }
+      await loadFullDiary();
     },
   };
 
@@ -43,7 +73,7 @@ export const DiaryEditComponent = (props: {
     }
   };
 
-  const onSave = () => {
+  const onSave = async () => {
     const title = (ref.$('.diary-edit-title-input') as HTMLInputElement).value.trim();
     const content = (ref.$('.diary-edit-body-input') as HTMLTextAreaElement).value.trim();
 
@@ -52,7 +82,7 @@ export const DiaryEditComponent = (props: {
       return;
     }
 
-    LocalDiaryService.saveDiary({
+    await LocalDiaryService.saveDiary({
       id: diaryId,
       date: props.date,
       title,
@@ -160,9 +190,7 @@ export const DiaryEditComponent = (props: {
           ></div>
           <i class='ifc-icon ma-pencil-outline diary-color-pencil' />
         </div>
-        <textarea class='input-base diary-edit-body-input' placeholder='Write your diary...'>
-          {defaultContent}
-        </textarea>
+        {loadingDom.node}
       </div>
     </HeaderWithBackFrame>
   );

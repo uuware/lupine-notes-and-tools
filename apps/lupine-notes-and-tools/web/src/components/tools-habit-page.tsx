@@ -12,9 +12,9 @@ import {
 import { LocalToolsService, ToolItem } from '../services/local-tools-service';
 
 interface ToolsHabitPageProps extends PageProps {
-  item: ToolItem;
+  item: Partial<ToolItem>;
   sliderFrameHook: SliderFrameHookProps;
-  onEdit?: (item: ToolItem) => void;
+  onEdit?: (item: Partial<ToolItem>) => void;
   onDelete?: (id: string) => void;
 }
 
@@ -31,8 +31,8 @@ export const ToolsHabitPage = (props: ToolsHabitPageProps) => {
       cancelButtonText: 'Cancel',
       handleClicked: async (index: number, close: (val?: any) => void) => {
         close();
-        if (index === 0) {
-          LocalToolsService.clearHabitData(props.item.id);
+        if (index === 0 && props.item.id) {
+          await LocalToolsService.clearHabitData(props.item.id);
           refreshStats();
           refreshCalendar();
         }
@@ -54,7 +54,7 @@ export const ToolsHabitPage = (props: ToolsHabitPageProps) => {
       cancelButtonText: 'Cancel',
       handleClicked: async (index: number, close: () => void) => {
         close();
-        if (index === 0) {
+        if (index === 0 && props.item.id) {
           LocalToolsService.deleteItem(props.item.id);
           if (props.onDelete) props.onDelete(props.item.id);
           props.sliderFrameHook.close!(new MouseEvent('click'));
@@ -81,8 +81,9 @@ export const ToolsHabitPage = (props: ToolsHabitPageProps) => {
     return `${y}-${m}-${day}`;
   };
 
-  const onToggleCheckIn = () => {
-    LocalToolsService.toggleHabitDate(props.item.id, formatDateString(selectedDate));
+  const onToggleCheckIn = async () => {
+    if (!props.item.id) return;
+    await LocalToolsService.toggleHabitDate(props.item.id, formatDateString(selectedDate));
     refreshStats();
     refreshCalendar();
   };
@@ -152,11 +153,13 @@ export const ToolsHabitPage = (props: ToolsHabitPageProps) => {
       const iterStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
       const isToday = iterStr === todayStr;
       const isSelected = iterStr === selectedStr;
+      const isFuture = iterStr > todayStr;
       const hasCheckedIn = checkedDates.includes(iterStr);
 
       let cssClass = 'diary-calendar-day';
       if (isSelected) cssClass += ' selected';
       if (isToday) cssClass += ' today';
+      if (isFuture) cssClass += ' future';
 
       daysNodes.push(
         <div
@@ -320,6 +323,10 @@ export const ToolsHabitPage = (props: ToolsHabitPageProps) => {
     '.diary-calendar-day.selected': {
       border: '1px solid var(--primary-accent-color)',
       backgroundColor: 'rgba(24, 144, 255, 0.1)',
+    },
+    '.diary-calendar-day.future': {
+      color: 'var(--secondary-color)',
+      opacity: 0.5,
     },
     '.habit-dot': {
       position: 'absolute',

@@ -13,6 +13,7 @@
 ## 1. Core Philosophy & Reactivity
 
 - **`useState` — React-style local state (small/simple components)**:
+
   - Import: `import { useState } from 'lupine.components';`
   - Syntax: `const [value, setValue] = useState(initial);` — calling `setValue(...)` rerenders the **entire** component.
   - ✅ **Use when**: The component is small, state drives most of the UI, and the React-style patterns feel natural.
@@ -20,6 +21,7 @@
   - **`ref.onLoad` + useState**: `onLoad` is called **only on initial mount** (not on rerenders). It's the right place for async data fetch that populates state.
 
 - **`HtmlVar` — Surgical partial updates (large/complex components)**:
+
   - Use `HtmlVar` to wrap dynamic sections (lists, conditional renderings, async content).
   - **Pattern**: `const dom = new HtmlVar(initialContent);` → JSX `{dom.node}` → `dom.value = updatedContent`.
   - ✅ **Use when**: Only a small part of a large component changes (e.g. list inside a page, progress text), or state is updated by external hooks (`props.hook.onProgress`), or high-frequency updates (file upload progress).

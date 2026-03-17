@@ -21,6 +21,7 @@ import { FinancePage } from './pages/finance-page';
 import { DiaryPage } from './pages/diary-page';
 import { MinePage } from './pages/mine-page';
 import { ToolsPage } from './pages/tools-page';
+import { StorageManager } from './services/cloud/storage-manager';
 
 bindLang('zh-cn', {});
 bindTheme('light', themes);

@@ -8,79 +8,85 @@ export interface LocalDiaryProps {
   orderIndex?: number;
 }
 
-const STORAGE_KEY = 'lj_diaries';
+import { StorageManager } from './cloud/storage-manager';
 
 export const LocalDiaryService = {
-  getAllDiaries: (): LocalDiaryProps[] => {
+  getAllDiaries: (): Partial<LocalDiaryProps>[] => {
     try {
-      const data = localStorage.getItem(STORAGE_KEY);
-      const diaries: LocalDiaryProps[] = data ? JSON.parse(data) : [];
-      return diaries.sort((a, b) => {
+      const diariesList = [...StorageManager.getCategoryList('diariesList')];
+      return diariesList.sort((a, b) => {
         const orderA = a.orderIndex !== undefined ? a.orderIndex : a.id;
         const orderB = b.orderIndex !== undefined ? b.orderIndex : b.id;
         return orderB - orderA;
       });
     } catch (e) {
-      console.error('Failed to load diaries', e);
+      console.error('Failed to load diaries list', e);
       return [];
     }
   },
 
-  getDiaryById: (id: number): LocalDiaryProps | undefined => {
-    return LocalDiaryService.getAllDiaries().find((d) => d.id === id);
+  getDiaryById: async (id: number): Promise<LocalDiaryProps | undefined> => {
+    return await StorageManager.readItem('diaries', id.toString());
   },
 
-  getDiaryByDate: (dateStr: string): LocalDiaryProps | undefined => {
-    return LocalDiaryService.getAllDiaries().find((d) => d.date === dateStr);
+  getDiaryByDate: async (dateStr: string): Promise<LocalDiaryProps | undefined> => {
+    const listMatch = LocalDiaryService.getAllDiaries().find((d) => d.date === dateStr);
+    if (!listMatch || !listMatch.id) return undefined;
+    
+    return await StorageManager.readItem('diaries', listMatch.id.toString());
   },
 
-  saveDiary: (diary: LocalDiaryProps): LocalDiaryProps => {
-    const diaries = LocalDiaryService.getAllDiaries();
+  saveDiary: async (diary: LocalDiaryProps): Promise<LocalDiaryProps> => {
+    const list = LocalDiaryService.getAllDiaries();
     diary.updatedAt = Date.now();
 
     if (diary.id <= 0) {
       diary.id = Date.now();
-      const maxOrder = diaries.length > 0 ? Math.max(...diaries.map((d) => d.orderIndex ?? d.id)) : Date.now();
+      const maxOrder = list.length > 0 ? Math.max(...list.map((d) => d.orderIndex ?? d.id!)) : Date.now();
       diary.orderIndex = maxOrder + 1;
-      diaries.unshift(diary);
-    } else {
-      const index = diaries.findIndex((d) => d.id === diary.id);
-      if (index > -1) {
-        diaries[index] = diary;
-      } else {
-        diaries.unshift(diary);
-      }
     }
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(diaries));
+    const listMetadata: Partial<LocalDiaryProps> = {
+      id: diary.id,
+      date: diary.date,
+      title: diary.title,
+      color: diary.color,
+      updatedAt: diary.updatedAt,
+      orderIndex: diary.orderIndex,
+    };
+
+    await StorageManager.saveItem('diaries', 'diariesList', diary, listMetadata);
     return diary;
   },
 
-  updateDiaryOrders: (orderedIds: number[]): boolean => {
-    const diaries = LocalDiaryService.getAllDiaries();
+  updateDiaryOrders: async (orderedIds: number[]): Promise<boolean> => {
+    const list = LocalDiaryService.getAllDiaries();
     let updated = false;
     const len = orderedIds.length;
     orderedIds.forEach((id, idx) => {
-      const diary = diaries.find((d) => d.id === id);
-      if (diary) {
-        diary.orderIndex = len - idx;
+      const diaryMeta = list.find((d) => d.id === id);
+      if (diaryMeta) {
+        diaryMeta.orderIndex = len - idx;
         updated = true;
       }
     });
 
     if (updated) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(diaries));
+       await StorageManager.getActiveProvider().writeCategoryList('diaries', list);
     }
     return updated;
   },
 
-  deleteDiary: (id: number): boolean => {
-    let diaries = LocalDiaryService.getAllDiaries();
-    const len = diaries.length;
-    diaries = diaries.filter((d) => d.id !== id);
-    if (diaries.length !== len) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(diaries));
-      return true;
+  deleteDiary: async (id: number): Promise<boolean> => {
+    let list = LocalDiaryService.getAllDiaries();
+    const len = list.length;
+    list = list.filter((d) => d.id !== id);
+    
+    if (list.length !== len) {
+       StorageManager.getCategoryList('diariesList').splice(0, len, ...list); 
+       await StorageManager.getActiveProvider().writeCategoryList('diaries', list);
+       await StorageManager.getActiveProvider().deleteItem('diaries', id.toString());
+       return true;
     }
     return false;
   },

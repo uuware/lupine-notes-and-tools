@@ -15,6 +15,7 @@ import {
 } from 'lupine.components';
 import { FinanceSearchComponent } from '../components/finance-search-page';
 import { LocalFinanceProps, LocalFinanceService } from '../services/local-finance-service';
+import { StorageManager } from '../services/cloud/storage-manager';
 import { FinanceEditComponent } from '../components/finance-edit';
 import { FinanceDetailComponent } from '../components/finance-detail';
 
@@ -41,16 +42,16 @@ export const FinancePage = async (props: PageProps) => {
     resetSwipeMenus();
   };
 
-  const onEditRecord = (record: LocalFinanceProps) => {
+  const onEditRecord = (record: Partial<LocalFinanceProps>) => {
     sliderFrameHook.load!(
-      <FinanceEditComponent record={record} sliderFrameHook={sliderFrameHook} onSaved={refreshList} />
+      <FinanceEditComponent record={record as LocalFinanceProps} sliderFrameHook={sliderFrameHook} onSaved={refreshList} />
     );
   };
 
-  const onViewRecord = (record: LocalFinanceProps) => {
+  const onViewRecord = (record: Partial<LocalFinanceProps>) => {
     resetSwipeMenus();
     sliderFrameHook.load!(
-      <FinanceDetailComponent record={record} sliderFrameHook={sliderFrameHook} onSaved={refreshList} />
+      <FinanceDetailComponent record={record as LocalFinanceProps} sliderFrameHook={sliderFrameHook} onSaved={refreshList} />
     );
   };
 
@@ -221,8 +222,8 @@ export const FinancePage = async (props: PageProps) => {
     const filteredRecords = currentSearchQuery
       ? allRecords.filter(
           (n) =>
-            n.title.toLowerCase().includes(currentSearchQuery.toLowerCase()) ||
-            n.remark.toLowerCase().includes(currentSearchQuery.toLowerCase())
+            (n.title && n.title.toLowerCase().includes(currentSearchQuery.toLowerCase())) ||
+            (n.remark && n.remark.toLowerCase().includes(currentSearchQuery.toLowerCase()))
         )
       : allRecords;
 
@@ -233,7 +234,7 @@ export const FinancePage = async (props: PageProps) => {
 
     dom.value = (
       <div class='note-list-container'>
-        {filteredRecords.map((record) => {
+        {filteredRecords.map((record: Partial<LocalFinanceProps>) => {
           let totalAmount = 0;
           if (record.items) {
             record.items.forEach((item) => {
@@ -256,29 +257,29 @@ export const FinancePage = async (props: PageProps) => {
                   <i class='ifc-icon ma-pencil-outline' />
                 </div>
                 <div
-                  class='action-btn delete-btn'
-                  onClick={(e) => {
-                    onDeleteRecord(record.id, e);
-                  }}
-                >
-                  <i class='ifc-icon ma-delete-off-outline' />
-                </div>
-              </div>
-              <div
-                class='note-card row-box'
-                style={{ borderLeft: `8px solid ${record.color || 'transparent'}` }}
-                data-id={record.id}
-                onMouseDown={(e) => {
-                  resetSwipeMenus(record.id);
-                  draggedAmount = 0;
-                  dragUtil.onMouseDown(e);
-                }}
-                onTouchStart={(e) => {
-                  resetSwipeMenus(record.id);
-                  draggedAmount = 0;
-                  dragUtil.onTouchStart(e);
-                }}
+                class='action-btn delete-btn'
                 onClick={(e) => {
+                  onDeleteRecord(record.id!, e);
+                }}
+              >
+                <i class='ifc-icon ma-delete-off-outline' />
+              </div>
+            </div>
+            <div
+              class='note-card row-box'
+              style={{ borderLeft: `8px solid ${record.color || 'transparent'}` }}
+              data-id={record.id}
+              onMouseDown={(e) => {
+                resetSwipeMenus(record.id!);
+                draggedAmount = 0;
+                dragUtil.onMouseDown(e);
+              }}
+              onTouchStart={(e) => {
+                resetSwipeMenus(record.id!);
+                draggedAmount = 0;
+                dragUtil.onTouchStart(e);
+              }}
+              onClick={(e) => {
                   if (draggedAmount > 5) return;
                   const cardDom = e.currentTarget as HTMLElement;
                   const transform = cardDom.style.transform;
@@ -298,10 +299,10 @@ export const FinancePage = async (props: PageProps) => {
               >
                 <div class='note-card-content flex-1'>
                   <div class='note-card-title'>{record.title || 'Finance Record'}</div>
-                  <div class='note-card-preview ellipsis'>
-                    <span class='note-card-total'>Total: {totalAmount}</span>{' '}
-                    {record.remark ? `| ${extractText(record.remark)}` : ''}
-                  </div>
+                <div class='note-card-preview ellipsis'>
+                  <span class='note-card-total'>Total: {totalAmount}</span>{' '}
+                  {record.remark ? `| ${extractText(record.remark)}` : ''}
+                </div>
                   <div class='note-card-date'>
                     {record.date} {record.time}
                   </div>
@@ -329,6 +330,7 @@ export const FinancePage = async (props: PageProps) => {
 
   const ref: RefProps = {
     onLoad: async () => {
+      await StorageManager.waitForInit();
       refreshList();
     },
   };

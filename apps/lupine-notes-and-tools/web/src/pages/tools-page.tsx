@@ -13,6 +13,7 @@ import {
   SliderFrameHookProps,
 } from 'lupine.components';
 import { LocalToolsService, ToolItem, TOOL_CATEGORIES } from '../services/local-tools-service';
+import { StorageManager } from '../services/cloud/storage-manager';
 import { ToolsEditPage } from '../components/tools-edit';
 import { ToolsFocusPage } from '../components/tools-focus-page';
 import { ToolsHabitPage } from '../components/tools-habit-page';
@@ -22,7 +23,7 @@ import { ToolsDaysMatterPage } from '../components/tools-days-matter-page';
 export const ToolsPage = async (props: PageProps) => {
   const dom = new HtmlVar('');
   const sliderFrameHook: SliderFrameHookProps = {};
-  let currentItems: ToolItem[] = [];
+  let currentItems: Partial<ToolItem>[] = [];
   let draggedAmount = 0;
 
   const loadData = () => {
@@ -208,7 +209,7 @@ export const ToolsPage = async (props: PageProps) => {
     sliderFrameHook.load!(<ToolsEditPage sliderFrameHook={sliderFrameHook} onSaved={loadData} />);
   };
 
-  const onEditTool = (item: ToolItem, e: Event) => {
+  const onEditTool = (item: Partial<ToolItem>, e: Event) => {
     sliderFrameHook.load!(<ToolsEditPage item={item} sliderFrameHook={sliderFrameHook} onSaved={loadData} />);
   };
 
@@ -228,16 +229,16 @@ export const ToolsPage = async (props: PageProps) => {
     });
   };
 
-  const onToggleTodo = (item: ToolItem, e: Event) => {
+  const onToggleTodo = (item: Partial<ToolItem>, e: Event) => {
     e.stopPropagation();
     if (!item.todo) return;
-    const cloned = { ...item };
+    const cloned = { ...item } as ToolItem; // cast since we know it's a complete item once toggled
     cloned.todo!.isCompleted = !cloned.todo!.isCompleted;
     LocalToolsService.updateItem(cloned);
     loadData();
   };
 
-  const onClickCard = (item: ToolItem, e: Event) => {
+  const onClickCard = (item: Partial<ToolItem>, e: Event) => {
     if (draggedAmount > 5) return;
     const cardDom = e.currentTarget as HTMLElement;
     const transform = cardDom.style.transform;
@@ -256,7 +257,7 @@ export const ToolsPage = async (props: PageProps) => {
     onViewTool(item);
   };
 
-  const onViewTool = (item: ToolItem) => {
+  const onViewTool = (item: Partial<ToolItem>) => {
     resetSwipeMenus();
     if (item.type === 'focus') {
       sliderFrameHook.load!(
@@ -301,7 +302,7 @@ export const ToolsPage = async (props: PageProps) => {
   };
 
   // Helper callbacks matching the expected signatures
-  const onEditToolCallback = (item: ToolItem) => {
+  const onEditToolCallback = (item: Partial<ToolItem>) => {
     onEditTool(item, new Event('click'));
   };
 
@@ -432,8 +433,9 @@ export const ToolsPage = async (props: PageProps) => {
     }
   });
 
-  const renderContentDaysMatter = (item: ToolItem) => {
-    const dm = item.daysMatter!;
+  const renderContentDaysMatter = (item: Partial<ToolItem>) => {
+    const dm = item.daysMatter;
+    if (!dm) return <div class='tool-content' style={{ paddingLeft: '8px' }}><div class='tool-title'>{item.title}</div></div>;
 
     return (
       <div class='tool-content' style={{ paddingLeft: '8px' }}>
@@ -445,9 +447,9 @@ export const ToolsPage = async (props: PageProps) => {
     );
   };
 
-  const renderContentHabit = (item: ToolItem) => {
-    const isCheckedIn = LocalToolsService.isHabitCheckedInToday(item.habit);
-    const consecutive = LocalToolsService.getHabitStreak(item.habit);
+  const renderContentHabit = (item: Partial<ToolItem>) => {
+    const isCheckedIn = LocalToolsService.isHabitCheckedInToday(item.habit!);
+    const consecutive = LocalToolsService.getHabitStreak(item.habit!);
     return (
       <div class='tool-content' style={{ paddingLeft: '8px' }}>
         <div class='tool-title'>{item.title}</div>
@@ -458,7 +460,7 @@ export const ToolsPage = async (props: PageProps) => {
     );
   };
 
-  const renderContentTodo = (item: ToolItem) => {
+  const renderContentTodo = (item: Partial<ToolItem>) => {
     const isComp = item.todo?.isCompleted;
     return (
       <div class={'tool-content ' + (isComp ? 'todo-completed' : '')} style={{ paddingLeft: '8px', minWidth: 0 }}>
@@ -477,7 +479,7 @@ export const ToolsPage = async (props: PageProps) => {
     );
   };
 
-  const renderContentFocus = (item: ToolItem) => {
+  const renderContentFocus = (item: Partial<ToolItem>) => {
     const duration = item.focus?.durationMinutes || 30;
     const durationSec = duration * 60;
     const remaining = item.focus?.remainingSeconds;
@@ -503,9 +505,11 @@ export const ToolsPage = async (props: PageProps) => {
     );
   };
 
-  const renderRightContent = (item: ToolItem) => {
+  const renderRightContent = (item: Partial<ToolItem>) => {
     if (item.type === 'days_matter') {
-      const remaining = LocalToolsService.calculateDaysToTarget(item.daysMatter!.targetDate, item.daysMatter!.cycle);
+      if (!item.daysMatter || !item.daysMatter.targetDate) return null;
+      
+      const remaining = LocalToolsService.calculateDaysToTarget(item.daysMatter.targetDate, item.daysMatter.cycle || 'none');
       if (remaining < 0) {
         return <div class='days-matter-past'>Passed</div>;
       }
@@ -526,7 +530,7 @@ export const ToolsPage = async (props: PageProps) => {
     return null; // Todo/Habit/Focus have right content embedded directly
   };
 
-  const renderList = (items: ToolItem[]) => {
+  const renderList = (items: Partial<ToolItem>[]) => {
     return (
       <>
         {items.map((item) => (
@@ -544,7 +548,7 @@ export const ToolsPage = async (props: PageProps) => {
               <div
                 class='action-btn delete-btn'
                 onClick={(e) => {
-                  onDeleteTool(item.id, e);
+                  onDeleteTool(item.id!, e);
                 }}
               >
                 <i class='ifc-icon ma-delete-off-outline' />
@@ -555,12 +559,12 @@ export const ToolsPage = async (props: PageProps) => {
               data-id={item.id}
               style={{ borderLeft: item.color ? `6px solid ${item.color}` : '6px solid transparent' }}
               onMouseDown={(e) => {
-                resetSwipeMenus(item.id);
+                resetSwipeMenus(item.id!);
                 draggedAmount = 0;
                 dragUtil.onMouseDown(e);
               }}
               onTouchStart={(e) => {
-                resetSwipeMenus(item.id);
+                resetSwipeMenus(item.id!);
                 draggedAmount = 0;
                 dragUtil.onTouchStart(e);
               }}
@@ -622,6 +626,7 @@ export const ToolsPage = async (props: PageProps) => {
 
   const ref: RefProps = {
     onLoad: async () => {
+      await StorageManager.waitForInit();
       loadData();
     },
   };

@@ -1,6 +1,8 @@
 import { VNode } from 'lupine.web';
 import { MediaQueryMaxWidth, ResponsiveFrame, SliderFrame, SliderFrameHookProps } from 'lupine.components';
 import { SideMenuContent } from '../components/side-menu-content';
+import { StorageManager } from '../services/cloud/storage-manager';
+import { LoadingSpin } from '../components/loading-spin';
 
 // Note: Replace with true site config loading if available
 const getSiteTitle = async () => 'My Note App';
@@ -40,5 +42,13 @@ export const AppResponsiveFrame = async (placeholderClassname: string, vnode: VN
     ),
     maxWidth: MediaQueryMaxWidth.DesktopMax,
     autoExtendSidemenu: layout === 'sidebar',
+    onLoad: async () => {
+      const closeLoading = await LoadingSpin.show();
+      try {
+        await StorageManager.initialize();
+      } finally {
+        closeLoading();
+      }
+    },
   });
 };

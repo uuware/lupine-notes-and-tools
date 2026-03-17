@@ -52,7 +52,7 @@ export const FinanceSearchComponent = (props: { sliderFrameHook: SliderFrameHook
 
     const allRecords = LocalFinanceService.getAllRecords();
     const filteredRecords = allRecords.filter(
-      (n) => n.title.toLowerCase().includes(query.toLowerCase()) || n.remark.toLowerCase().includes(query.toLowerCase())
+      (n) => (n.title?.toLowerCase() || '').includes(query.toLowerCase()) || (n.remark?.toLowerCase() || '').includes(query.toLowerCase())
     );
 
     if (filteredRecords.length === 0) {
@@ -80,7 +80,7 @@ export const FinanceSearchComponent = (props: { sliderFrameHook: SliderFrameHook
                 onClick={() => {
                   props.sliderFrameHook.load!(
                     <FinanceDetailComponent
-                      record={record}
+                      record={record as LocalFinanceProps}
                       sliderFrameHook={props.sliderFrameHook}
                       onSaved={() => {}}
                     />
@@ -89,9 +89,9 @@ export const FinanceSearchComponent = (props: { sliderFrameHook: SliderFrameHook
               >
                 <div class='note-card-content flex-1' style={{ minWidth: 0 }}>
                   <div class='note-card-title'>{record.title || 'Finance Record'}</div>
-                  <div class='note-card-preview ellipsis'>{extractText(record.remark)}</div>
+                  <div class='note-card-preview ellipsis'>{extractText(record.remark || '')}</div>
                   <div class='note-card-date'>
-                    {record.date} {record.time} | Total: {totalAmount}
+                    {record.date || ''} {record.time || ''} | Total: {totalAmount}
                   </div>
                 </div>
               </div>

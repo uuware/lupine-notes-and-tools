@@ -2,9 +2,9 @@ import { CssProps, HeaderWithBackFrame, SliderFrameHookProps, ActionSheetSelect 
 import { ToolItem, LocalToolsService } from '../services/local-tools-service';
 
 export const ToolsDaysMatterPage = (props: {
-  item: ToolItem;
+  item: Partial<ToolItem>;
   sliderFrameHook: SliderFrameHookProps;
-  onEdit?: (item: ToolItem) => void;
+  onEdit?: (item: Partial<ToolItem>) => void;
   onDelete?: (id: string) => void;
 }) => {
   const onEdit = () => {
@@ -18,7 +18,7 @@ export const ToolsDaysMatterPage = (props: {
       cancelButtonText: 'Cancel',
       handleClicked: async (index: number, close: () => void) => {
         close();
-        if (index === 0) {
+        if (index === 0 && props.item.id) {
           LocalToolsService.deleteItem(props.item.id);
           if (props.onDelete) props.onDelete(props.item.id);
           props.sliderFrameHook.close!(new MouseEvent('click'));

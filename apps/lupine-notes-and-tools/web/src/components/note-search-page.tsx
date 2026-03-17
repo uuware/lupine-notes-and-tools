@@ -79,7 +79,7 @@ export const NoteSearchComponent = (props: { sliderFrameHook: SliderFrameHookPro
     const allNotes = LocalNotesService.getAllNotes();
     const filteredNotes = allNotes.filter(
       (n) =>
-        n.title.toLowerCase().includes(query.toLowerCase()) || n.content.toLowerCase().includes(query.toLowerCase())
+        (n.title?.toLowerCase() || '').includes(query.toLowerCase()) || (n.content?.toLowerCase() || '').includes(query.toLowerCase())
     );
 
     if (filteredNotes.length === 0) {
@@ -98,11 +98,10 @@ export const NoteSearchComponent = (props: { sliderFrameHook: SliderFrameHookPro
       <div class='note-list-container' style={{ paddingTop: '16px' }}>
         {filteredNotes.map((note) => (
           <div class='note-card-wrapper search-result-card-wrapper'>
-            <div class='note-card row-box search-result-card' onClick={() => onViewNote(note)}>
+            <div class='note-card row-box search-result-card' onClick={() => onViewNote(note as LocalNoteProps)}>
               <div class='note-card-content flex-1'>
                 <div class='note-card-title'>{note.title}</div>
-                <div class='note-card-preview ellipsis'>{extractText(note.content)}</div>
-                <div class='note-card-date'>{new Date(note.updatedAt).toLocaleString()}</div>
+                <div class='note-card-date'>{note.updatedAt ? new Date(note.updatedAt).toLocaleString() : ''}</div>
               </div>
             </div>
           </div>

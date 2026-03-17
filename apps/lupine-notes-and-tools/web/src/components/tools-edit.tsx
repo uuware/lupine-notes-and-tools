@@ -27,7 +27,7 @@ import {
 } from '../services/local-tools-service';
 
 export const ToolsEditPage = (props: {
-  item?: ToolItem;
+  item?: Partial<ToolItem>;
   sliderFrameHook: SliderFrameHookProps;
   onSaved: () => void;
 }) => {
@@ -262,8 +262,8 @@ export const ToolsEditPage = (props: {
     }
 
     const newItem: ToolItem = {
-      id: isEdit ? props.item!.id : Date.now().toString(),
-      sortIndex: isEdit ? props.item!.sortIndex : 0,
+      id: isEdit ? props.item!.id! : Date.now().toString(),
+      sortIndex: isEdit ? props.item!.sortIndex! : 0,
       type,
       title,
       color,

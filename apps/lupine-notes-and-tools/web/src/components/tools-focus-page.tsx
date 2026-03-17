@@ -11,9 +11,9 @@ import {
 import { FocusAnimation, ToolItem, LocalToolsService } from '../services/local-tools-service';
 
 export const ToolsFocusPage = (props: {
-  item: ToolItem;
+  item: Partial<ToolItem>;
   sliderFrameHook: SliderFrameHookProps;
-  onEdit?: (item: ToolItem) => void;
+  onEdit?: (item: Partial<ToolItem>) => void;
   onDelete?: (id: string) => void;
 }) => {
   const durationSec = (props.item.focus?.durationMinutes || 25) * 60;
@@ -352,6 +352,8 @@ export const ToolsFocusPage = (props: {
 
   const ref: RefProps = {
     onLoad: async () => {
+      isPaused = false;
+      startTimer();
       updateTimeUI();
     },
     onUnload: async () => {
@@ -359,11 +361,11 @@ export const ToolsFocusPage = (props: {
       if (!isCompleted && timeLeft > 0 && timeLeft < durationSec) {
         // Save intermediate state
         props.item.focus!.remainingSeconds = timeLeft;
-        LocalToolsService.updateItem(props.item);
+        LocalToolsService.updateItem(props.item as ToolItem); // explicitly cast to save
       } else if (isCompleted || timeLeft === durationSec) {
         // Clear saved state if done or pristine
         props.item.focus!.remainingSeconds = undefined;
-        LocalToolsService.updateItem(props.item);
+        LocalToolsService.updateItem(props.item as ToolItem); // explicitly cast to save
       }
     },
   };
@@ -385,7 +387,7 @@ export const ToolsFocusPage = (props: {
       cancelButtonText: 'Cancel',
       handleClicked: async (index: number, close: () => void) => {
         close();
-        if (index === 0) {
+        if (index === 0 && props.item.id) {
           LocalToolsService.deleteItem(props.item.id);
           if (props.onDelete) props.onDelete(props.item.id);
           props.sliderFrameHook.close!(new MouseEvent('click'));

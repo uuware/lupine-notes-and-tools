@@ -6,27 +6,55 @@ import {
   SliderFrameHookProps,
   HeaderWithBackFrame,
   ActionSheetColorPicker,
+  HtmlVar
 } from 'lupine.components';
 // HEditor relies on complex setup in original app, fallback to simple textarea for robustness here
 import { LocalNoteProps, LocalNotesService } from '../services/local-notes-service';
 
 export const NoteEditComponent = (props: {
-  note?: LocalNoteProps;
+  note?: Partial<LocalNoteProps>; // The list metadata passed in
   sliderFrameHook: SliderFrameHookProps;
   onSaved: () => void;
 }) => {
   const isEdit = !!props.note;
-  const noteId = props.note ? props.note.id : -1;
+  const noteId = props.note ? props.note.id! : -1;
   const defaultTitle = props.note ? props.note.title : '';
-  const defaultContent = props.note ? props.note.content : '';
+  let loading = isEdit;
+  let fullText = '';
+  
+  const loadingDom = new HtmlVar(
+    <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--secondary-color)' }}>
+      <i class="ifc-icon ma-cloud-sync" style={{ fontSize: '24px', marginRight: '8px', animation: 'spin 1s linear infinite' }} />
+      Loading from Cloud...
+    </div>
+  );
+
+  const loadFullNote = async () => {
+    if (isEdit && noteId > 0) {
+      const fullNote = await LocalNotesService.getNoteById(noteId);
+      fullText = fullNote?.content || '';
+    } else {
+      fullText = '';
+    }
+
+    loading = false;
+    loadingDom.value = (
+      <textarea class='input-base note-edit-body-input' placeholder='Write your note...'>
+        {fullText}
+      </textarea>
+    );
+
+    if (!isEdit) {
+      setTimeout(() => {
+        const tInput = ref.$('.note-edit-title-input') as HTMLInputElement;
+        tInput?.focus();
+      }, 50);
+    }
+  };
 
   const ref: RefProps = {
     onLoad: async () => {
-      // Auto-focus title if new note
-      if (!isEdit) {
-        const tInput = ref.$('.note-edit-title-input') as HTMLInputElement;
-        tInput?.focus();
-      }
+      await loadFullNote();
     },
   };
 
@@ -44,7 +72,7 @@ export const NoteEditComponent = (props: {
     }
   };
 
-  const onSave = () => {
+  const onSave = async () => {
     const title = (ref.$('.note-edit-title-input') as HTMLInputElement).value.trim();
     const content = (ref.$('.note-edit-body-input') as HTMLTextAreaElement).value.trim();
 
@@ -53,7 +81,7 @@ export const NoteEditComponent = (props: {
       return;
     }
 
-    LocalNotesService.saveNote({
+    await LocalNotesService.saveNote({
       id: noteId,
       title,
       content,
@@ -145,9 +173,7 @@ export const NoteEditComponent = (props: {
           ></div>
           <i class='ifc-icon ma-pencil-outline icon-btn-secondary' />
         </div>
-        <textarea class='input-base note-edit-body-input' placeholder='Write your note...'>
-          {defaultContent}
-        </textarea>
+        {loadingDom.node}
       </div>
     </HeaderWithBackFrame>
   );

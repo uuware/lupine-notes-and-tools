@@ -141,25 +141,47 @@ export const DiarySearchComponent = async (props: { sliderFrameHook: SliderFrame
   let draggedAmount = 0;
   let menuClosedJustNow = false;
 
-  const onEditDiary = (diary: LocalDiaryProps) => {
+  const resetSwipeMenus = (excludeId?: number): boolean => {
+    let closedAny = false;
+    const cards = document.querySelectorAll('.diary-list-container .diary-card') as NodeListOf<HTMLDivElement>;
+    cards.forEach((c) => {
+      if (excludeId !== undefined) {
+        const id = parseInt(c.getAttribute('data-id') || '-1');
+        if (id === excludeId) return;
+      }
+      const transform = c.style.transform;
+      const match = transform.match(/translateX\(([-\d\.]+)px\)/);
+      if (match && parseFloat(match[1]) < -5) {
+        c.style.transform = 'translateX(0px)';
+        const actionLayer = c.previousElementSibling as HTMLDivElement;
+        if (actionLayer && actionLayer.classList.contains('diary-card-actions-layer')) {
+          actionLayer.style.opacity = '0';
+        }
+        closedAny = true;
+      }
+    });
+    return closedAny;
+  };
+
+  const onEditDiary = (diary: Partial<LocalDiaryProps>) => {
     props.sliderFrameHook.load!(
       <DiaryEditComponent
         diary={diary}
-        date={diary.date}
+        date={diary.date || ''}
         sliderFrameHook={props.sliderFrameHook}
         onSaved={() => onSearchQuery(currentSearchQuery)}
       />
     );
   };
 
-  const onViewDiary = (diary: LocalDiaryProps) => {
+  const onViewDiary = (diary: Partial<LocalDiaryProps>) => {
     resetSwipeMenus();
     props.sliderFrameHook.load!(
-      <DiaryDetailComponent
-        diary={diary}
-        sliderFrameHook={props.sliderFrameHook}
-        onSaved={() => onSearchQuery(currentSearchQuery)}
-      />
+        <DiaryDetailComponent
+          diary={diary as LocalDiaryProps}
+          sliderFrameHook={props.sliderFrameHook}
+          onSaved={() => onSearchQuery(currentSearchQuery)}
+        />
     );
   };
 
@@ -243,27 +265,7 @@ export const DiarySearchComponent = async (props: { sliderFrameHook: SliderFrame
     }
   });
 
-  const resetSwipeMenus = (excludeId?: number): boolean => {
-    let closedAny = false;
-    const cards = document.querySelectorAll('.diary-list-container .diary-card') as NodeListOf<HTMLDivElement>;
-    cards.forEach((c) => {
-      if (excludeId !== undefined) {
-        const id = parseInt(c.getAttribute('data-id') || '-1');
-        if (id === excludeId) return;
-      }
-      const transform = c.style.transform;
-      const match = transform.match(/translateX\(([-\d\.]+)px\)/);
-      if (match && parseFloat(match[1]) < -5) {
-        c.style.transform = 'translateX(0px)';
-        const actionLayer = c.previousElementSibling as HTMLDivElement;
-        if (actionLayer && actionLayer.classList.contains('diary-card-actions-layer')) {
-          actionLayer.style.opacity = '0';
-        }
-        closedAny = true;
-      }
-    });
-    return closedAny;
-  };
+  // resetSwipeMenus was moved up
 
   const handleBgTouch = (e: Event) => {
     let target = e.target as Element;
@@ -309,7 +311,7 @@ export const DiarySearchComponent = async (props: { sliderFrameHook: SliderFrame
     const q = query.toLowerCase();
     const results = all.filter(
       (n) =>
-        n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q) || n.date.toLowerCase().includes(q)
+        (n.title?.toLowerCase() || '').includes(q) || (n.content?.toLowerCase() || '').includes(q) || (n.date?.toLowerCase() || '').includes(q)
     );
 
     if (results.length === 0) {
@@ -334,7 +336,7 @@ export const DiarySearchComponent = async (props: { sliderFrameHook: SliderFrame
               <div
                 class='action-btn delete-btn'
                 onClick={(e) => {
-                  onDeleteDiary(diary.id, e);
+                  onDeleteDiary(diary.id!, e);
                 }}
               >
                 <i class='ifc-icon ma-delete-off-outline' />
@@ -374,8 +376,8 @@ export const DiarySearchComponent = async (props: { sliderFrameHook: SliderFrame
             >
               <div class='diary-card-content flex-1' style={{ minWidth: 0 }}>
                 <div class='diary-card-title'>{diary.title || 'Untitled'}</div>
-                <div class='diary-card-preview ellipsis'>{extractText(diary.content)}</div>
-                <div class='diary-card-date'>{diary.date}</div>
+                <div class='diary-card-preview ellipsis'>{extractText(diary.content || '')}</div>
+                <div class='diary-card-date'>{diary.date || ''}</div>
               </div>
             </div>
           </div>

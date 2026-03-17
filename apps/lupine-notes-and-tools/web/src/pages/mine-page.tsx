@@ -77,7 +77,7 @@ export const MinePage = async (props: PageProps) => {
   const refreshRender = () => {
     dom.value = (
       <div class='mine-page-container'>
-        <SliderFrame hook={sliderFrameHook} />
+        <SliderFrame hook={sliderFrameHook} afterClose={refreshRender} />
 
         {/* Profile Header Block */}
         <div class='profile-header'>

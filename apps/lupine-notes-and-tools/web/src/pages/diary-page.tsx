@@ -14,6 +14,7 @@ import {
   DomUtils,
 } from 'lupine.components';
 import { LocalDiaryProps, LocalDiaryService } from '../services/local-diary-service';
+import { StorageManager } from '../services/cloud/storage-manager';
 import { DiaryEditComponent } from '../components/diary-edit';
 import { DiaryDetailComponent } from '../components/diary-detail';
 import { SideMenuContent } from '../components/side-menu-content';
@@ -49,13 +50,13 @@ export const DiaryPage = async (props: PageProps) => {
     sliderFrameHook.load!(<DiarySearchComponent sliderFrameHook={sliderFrameHook} />);
   };
 
-  const onAddDiary = () => {
+  const onAddDiary = async () => {
     const dStr = formatDate(selectedDate);
-    const existing = LocalDiaryService.getDiaryByDate(dStr);
+    const existing = await LocalDiaryService.getDiaryByDate(dStr);
     sliderFrameHook.load!(
       <DiaryEditComponent
         date={dStr}
-        diary={existing}
+        diary={existing as LocalDiaryProps} // Existing would be from cache fully formed, or we'll type existing safely
         sliderFrameHook={sliderFrameHook}
         onSaved={() => {
           refreshCalendar();
@@ -66,10 +67,10 @@ export const DiaryPage = async (props: PageProps) => {
     resetSwipeMenus();
   };
 
-  const onEditDiary = (diary: LocalDiaryProps) => {
+  const onEditDiary = (diary: Partial<LocalDiaryProps>) => {
     sliderFrameHook.load!(
       <DiaryEditComponent
-        date={diary.date}
+        date={diary.date!}
         diary={diary}
         sliderFrameHook={sliderFrameHook}
         onSaved={() => {
@@ -80,11 +81,11 @@ export const DiaryPage = async (props: PageProps) => {
     );
   };
 
-  const onViewDiary = (diary: LocalDiaryProps) => {
+  const onViewDiary = (diary: Partial<LocalDiaryProps>) => {
     resetSwipeMenus();
     sliderFrameHook.load!(
       <DiaryDetailComponent
-        diary={diary}
+        diary={diary as LocalDiaryProps}
         sliderFrameHook={sliderFrameHook}
         onSaved={() => {
           refreshCalendar();
@@ -330,10 +331,10 @@ export const DiaryPage = async (props: PageProps) => {
 
     if (currentFilter === 'month') {
       const prefix = `${viewDate.getFullYear()}-${(viewDate.getMonth() + 1).toString().padStart(2, '0')}`;
-      filtered = all.filter((d) => d.date.startsWith(prefix));
+      filtered = all.filter((d) => d.date && d.date.startsWith(prefix));
     } else if (currentFilter === 'year') {
       const prefix = `${viewDate.getFullYear()}-`;
-      filtered = all.filter((d) => d.date.startsWith(prefix));
+      filtered = all.filter((d) => d.date && d.date.startsWith(prefix));
     }
 
     if (filtered.length === 0) {
@@ -358,7 +359,7 @@ export const DiaryPage = async (props: PageProps) => {
               <div
                 class='action-btn delete-btn'
                 onClick={(e) => {
-                  onDeleteDiary(diary.id, e);
+                  onDeleteDiary(diary.id!, e);
                 }}
               >
                 <i class='ifc-icon ma-delete-off-outline' />
@@ -369,12 +370,12 @@ export const DiaryPage = async (props: PageProps) => {
               style={{ borderLeft: diary.color ? `6px solid ${diary.color}` : '6px solid transparent' }}
               data-id={diary.id}
               onMouseDown={(e) => {
-                resetSwipeMenus(diary.id);
+                resetSwipeMenus(diary.id!);
                 draggedAmount = 0;
                 dragUtil.onMouseDown(e);
               }}
               onTouchStart={(e) => {
-                resetSwipeMenus(diary.id);
+                resetSwipeMenus(diary.id!);
                 draggedAmount = 0;
                 dragUtil.onTouchStart(e);
               }}
@@ -398,7 +399,7 @@ export const DiaryPage = async (props: PageProps) => {
             >
               <div class='diary-card-content flex-1'>
                 <div class='diary-card-title'>{diary.title || 'Untitled'}</div>
-                <div class='diary-card-preview ellipsis'>{extractText(diary.content)}</div>
+                <div class='diary-card-preview ellipsis'>{extractText(diary.content || '')}</div>
                 <div class='diary-card-date'>{diary.date}</div>
               </div>
             </div>
@@ -410,6 +411,7 @@ export const DiaryPage = async (props: PageProps) => {
 
   const ref: RefProps = {
     onLoad: async () => {
+      await StorageManager.waitForInit();
       refreshCalendar();
       refreshList();
     },

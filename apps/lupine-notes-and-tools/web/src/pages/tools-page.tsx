@@ -313,12 +313,13 @@ export const ToolsPage = async (props: PageProps) => {
   };
 
   const dragUtil = createDragUtil();
-  dragUtil.setOnMoveCallback((clientX: number, clientY: number, movedX: number, movedY: number) => {
+  dragUtil.setOnMoveCallback((clientX: number, clientY: number, movedX: number, movedY: number, initialDirection: string) => {
     draggedAmount += Math.abs(movedX) + Math.abs(movedY);
     const dragDom = dragUtil.getDraggingDom();
     if (!dragDom) return;
 
     if (dragDom.classList.contains('tool-card')) {
+      if (initialDirection === 'vertical') return;
       let x = movedX;
       if (x > 0) x = 0; // only swipe left
 

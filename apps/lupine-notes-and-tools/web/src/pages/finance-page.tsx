@@ -74,11 +74,12 @@ export const FinancePage = async (props: PageProps) => {
   };
 
   const dragUtil = createDragUtil();
-  dragUtil.setOnMoveCallback((clientX, clientY, movedX) => {
+  dragUtil.setOnMoveCallback((clientX, clientY, movedX, movedY, initialDirection) => {
     const dragDom = dragUtil.getDraggingDom();
     if (!dragDom) return;
 
     if (dragDom.classList.contains('note-card')) {
+      if (initialDirection === 'vertical') return;
       let translateX = movedX;
       if (translateX > 0) translateX = 0;
       if (translateX < -100) translateX = -100;

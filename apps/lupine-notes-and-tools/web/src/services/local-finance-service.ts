@@ -71,7 +71,8 @@ class LocalFinanceServiceCls {
        time: finalRecord.time,
        color: finalRecord.color,
        updatedAt: finalRecord.updatedAt,
-       orderIndex: finalRecord.orderIndex
+       orderIndex: finalRecord.orderIndex,
+       items: finalRecord.items
     };
 
     await StorageManager.saveItem('finances', 'financesList', finalRecord, listMetadata);

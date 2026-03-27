@@ -199,7 +199,7 @@ export const FinanceEditComponent = (props: {
       newRecord.orderIndex = props.record!.orderIndex;
     }
 
-    LocalFinanceService.saveRecord(newRecord);
+    await LocalFinanceService.saveRecord(newRecord);
     NotificationMessage.sendMessage('Saved successfully', NotificationColor.Success);
 
     if (props.onSaved) props.onSaved();

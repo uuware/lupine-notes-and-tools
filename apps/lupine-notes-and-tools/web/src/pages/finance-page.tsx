@@ -42,16 +42,18 @@ export const FinancePage = async (props: PageProps) => {
     resetSwipeMenus();
   };
 
-  const onEditRecord = (record: Partial<LocalFinanceProps>) => {
+  const onEditRecord = async (record: Partial<LocalFinanceProps>) => {
+    const fullRecord = await LocalFinanceService.getRecordById(record.id!) || record;
     sliderFrameHook.load!(
-      <FinanceEditComponent record={record as LocalFinanceProps} sliderFrameHook={sliderFrameHook} onSaved={refreshList} />
+      <FinanceEditComponent record={fullRecord as LocalFinanceProps} sliderFrameHook={sliderFrameHook} onSaved={refreshList} />
     );
   };
 
-  const onViewRecord = (record: Partial<LocalFinanceProps>) => {
+  const onViewRecord = async (record: Partial<LocalFinanceProps>) => {
     resetSwipeMenus();
+    const fullRecord = await LocalFinanceService.getRecordById(record.id!) || record;
     sliderFrameHook.load!(
-      <FinanceDetailComponent record={record as LocalFinanceProps} sliderFrameHook={sliderFrameHook} onSaved={refreshList} />
+      <FinanceDetailComponent record={fullRecord as LocalFinanceProps} sliderFrameHook={sliderFrameHook} onSaved={refreshList} />
     );
   };
 

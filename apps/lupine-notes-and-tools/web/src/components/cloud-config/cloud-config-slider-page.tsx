@@ -542,6 +542,7 @@ export const CloudConfigSliderPage = (props: { sliderFrameHook: SliderFrameHookP
     display: 'flex',
     flexDirection: 'column',
     gap: '16px',
+    paddingBottom: '32px',
 
     '.&-intro-text': {
       color: 'var(--secondary-color)',

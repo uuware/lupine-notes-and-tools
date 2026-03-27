@@ -113,13 +113,14 @@ export const DiaryPage = async (props: PageProps) => {
   };
 
   const dragUtil = createDragUtil();
-  dragUtil.setOnMoveCallback((clientX, clientY, movedX) => {
+  dragUtil.setOnMoveCallback((clientX, clientY, movedX, movedY, initialDirection) => {
     let dragDom = dragUtil.getDraggingDom();
     if (!dragDom) return;
     if (dragDom.closest('.action-btn')) return;
 
     dragDom = dragDom.closest('.diary-card') as HTMLDivElement;
     if (!dragDom) return;
+    if (initialDirection === 'vertical') return;
 
     const diffX = movedX;
     if (diffX < -5 && !dragDom.style.transform.includes('translateX')) {

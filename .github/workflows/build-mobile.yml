@@ -1,0 +1,160 @@
+name: Build Capacitor Mobile Apps
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+    paths:
+      - '**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**'
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '21'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Web App
+        run: |
+          cp .env-sample .env
+          npm run build-mobile
+
+      - name: Sync Capacitor Android
+        working-directory: apps/lupine-notes-and-tools/web
+        run: |
+          npx cap add android || echo "Android folder might already exist"
+          npx cap sync android
+
+      - name: Decode Keystore
+        id: decode_keystore
+        # You need to manually add ANDROID_KEYSTORE_BASE64 to GitHub Secrets which contains `uuware.keystore` base64 encoded.
+        # Command to encode: base64 uuware.keystore > keystore.b64 
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASS" ]; then
+            echo "Error: ANDROID_KEYSTORE_BASE64 or ANDROID_KEYSTORE_PASS is missing in GitHub Secrets!"
+            echo "Please generate a keystore locally, encode it to base64, and provide both secrets to build a signed release APK."
+            exit 1
+          fi
+          
+          echo "Decoding provided Keystore Secret..."
+          echo "$KEYSTORE_BASE64" | base64 --decode > release.keystore
+          
+          # Move it to the location where gradle expects it
+          mv release.keystore apps/lupine-notes-and-tools/web/android/app/release.keystore
+
+      - name: Build Android Release APK
+        working-directory: apps/lupine-notes-and-tools/web/android
+        env:
+          KEY_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          KEY_ALIAS: uuware
+          KEY_STORE_FILE: "release.keystore"
+        run: |
+          # Inject signing config directly into app/build.gradle
+          cat <<EOF >> app/build.gradle
+
+          android {
+              signingConfigs {
+                  release {
+                      storeFile file("$KEY_STORE_FILE")
+                      storePassword "$KEY_STORE_PASSWORD"
+                      keyAlias "$KEY_ALIAS"
+                      keyPassword "$KEY_PASSWORD"
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                  }
+              }
+          }
+          EOF
+          
+          ./gradlew assembleRelease
+
+      - name: Upload Android Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-APK
+          path: apps/lupine-notes-and-tools/web/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 5
+
+      - name: Create or Update Release Profile
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          draft: true
+          files: apps/lupine-notes-and-tools/web/android/app/build/outputs/apk/release/app-release.apk
+
+  build-ios:
+    name: Build iOS App
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Web App
+        run: |
+          cp .env-sample .env
+          npm run build-mobile
+
+      - name: Sync Capacitor iOS
+        working-directory: apps/lupine-notes-and-tools/web
+        run: |
+          npx cap add ios || echo "iOS folder might already exist"
+          npx cap sync ios
+
+
+      - name: Build iOS Xcode App (Simulator)
+        working-directory: apps/lupine-notes-and-tools/web/ios/App
+        # Note: We build for iphonesimulator to bypass code signing since user certificates are missing in this automated script 
+        # For actual device deployment, User will need to provide Apple Provisioning Profiles & Match setup
+        run: |
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination 'generic/platform=iOS Simulator' build
+
+      - name: Upload iOS Payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: iOS-App-Unsigned
+          path: apps/lupine-notes-and-tools/web/ios/App/build/Release-iphonesimulator/App.app
+          retention-days: 5

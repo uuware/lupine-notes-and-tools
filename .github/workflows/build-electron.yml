@@ -1,0 +1,87 @@
+name: Build Electron Desktop Apps
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+    paths:
+      - '**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**'
+  workflow_dispatch:
+
+jobs:
+  build-electron:
+    name: Build Electron on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            script: app1:build-win
+            description: Windows
+          - os: ubuntu-latest
+            script: app1:build-linux
+            description: Linux
+          - os: macos-latest
+            script: app1:build-mac
+            description: macOS
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      # Linux requires additional dependencies for electron-builder natively
+      - name: Install Linux Dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libopenjp2-7 libarchive-tools
+
+      - name: Install Root Dependencies
+        run: npm install
+
+      # Lupine components requires building some specific paths or running from specific dirs if necessary
+      - name: Navigate to Project and Build
+        run: |
+          npm install
+          cp .env-sample .env
+          npm run build
+          npm run ${{ matrix.script }} -- --publish never
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Electron-App-${{ matrix.description }}
+          path: |
+            dist/build/*.exe
+            dist/build/*.msi
+            dist/build/*.zip
+            dist/build/*.AppImage
+            dist/build/*.dmg
+          retention-days: 5
+
+      - name: Create or Update Release Profile
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          draft: true
+          files: |
+            dist/build/*.exe
+            dist/build/*.msi
+            dist/build/*.zip
+            dist/build/*.AppImage
+            dist/build/*.dmg

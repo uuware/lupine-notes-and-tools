@@ -150,7 +150,7 @@ jobs:
         # Note: We build for iphonesimulator to bypass code signing since user certificates are missing in this automated script 
         # For actual device deployment, User will need to provide Apple Provisioning Profiles & Match setup
         run: |
-          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination 'generic/platform=iOS Simulator' build
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS Simulator' build
 
       - name: Upload iOS Payload
         uses: actions/upload-artifact@v4

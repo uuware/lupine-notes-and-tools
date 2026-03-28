@@ -51,6 +51,11 @@ jobs:
           npx cap add android || echo "Android folder might already exist"
           npx cap sync android
 
+      - name: Generate Custom Icons & Splash Screens
+        working-directory: apps/lupine-notes-and-tools/web
+        run: |
+          npx --yes @capacitor/assets generate --android --splashBackgroundColor "#1e1e2e" --splashBackgroundColorDark "#111116"
+
       - name: Decode Keystore
         id: decode_keystore
         # You need to manually add ANDROID_KEYSTORE_BASE64 to GitHub Secrets which contains `uuware.keystore` base64 encoded.
@@ -144,6 +149,10 @@ jobs:
           npx cap add ios || echo "iOS folder might already exist"
           npx cap sync ios
 
+      - name: Generate Custom Icons & Splash Screens
+        working-directory: apps/lupine-notes-and-tools/web
+        run: |
+          npx --yes @capacitor/assets generate --ios --splashBackgroundColor "#1e1e2e" --splashBackgroundColorDark "#111116"
 
       - name: Build iOS Xcode App (Simulator)
         working-directory: apps/lupine-notes-and-tools/web/ios/App

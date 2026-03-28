@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@alicloud/pop-core": "^1.8.0",
-    "@capacitor-community/keep-awake": "^7.0.0",
+    "@capacitor-community/keep-awake": "^8.0.0",
     "@capacitor-community/media": "^8.0.1",
     "@capacitor/android": "^8.0.0",
     "@capacitor/app": "^8.0.0",

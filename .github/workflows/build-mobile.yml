@@ -54,7 +54,41 @@ jobs:
       - name: Generate Custom Icons & Splash Screens
         working-directory: apps/lupine-notes-and-tools/web
         run: |
-          npx --yes @capacitor/assets generate --android --splashBackgroundColor "#1e1e2e" --splashBackgroundColorDark "#111116"
+          npx --yes @capacitor/assets generate --android --splashBackgroundColor "#ffffff" --splashBackgroundColorDark "#ffffff"
+
+      - name: Hotfix Android 12 SplashScreen for Fragmented ROMs
+        working-directory: apps/lupine-notes-and-tools/web
+        run: |
+          mkdir -p android/app/src/main/res/drawable
+          mkdir -p android/app/src/main/res/values-v33
+          cat <<EOF > android/app/src/main/res/drawable/splash_layer.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+              <item android:drawable="@android:color/white" />
+              <item android:width="256dp" android:height="256dp" android:gravity="center"><bitmap android:src="@drawable/ic_splash_logo" android:gravity="fill" /></item>
+          </layer-list>
+          EOF
+          cat <<EOF > android/app/src/main/res/values-v33/styles.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+                  <item name="android:background">@drawable/splash_layer</item>
+                  <item name="windowSplashScreenBackground">#ffffff</item>
+                  <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_proxy</item>
+                  <item name="android:windowSplashScreenBackground">#ffffff</item>
+                  <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_proxy</item>
+                  <item name="android:windowNoTitle">true</item>
+                  <item name="android:windowActionBar">false</item>
+                  <item name="windowNoTitle">true</item>
+                  <item name="windowActionBar">false</item>
+                  <item name="android:statusBarColor">#ffffff</item>
+                  <item name="android:windowLightStatusBar">true</item>
+                  <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+                  <item name="android:windowFullscreen">true</item>
+              </style>
+          </resources>
+          EOF
+          node -e "const fs=require('fs'); const p='android/app/src/main/res/values/styles.xml'; let x=fs.readFileSync(p,'utf8'); x=x.replace(/<style name=\"AppTheme\.NoActionBarLaunch\".*?<\/style>/s, \`<style name=\"AppTheme.NoActionBarLaunch\" parent=\"Theme.SplashScreen\">\n        <item name=\"android:background\">@drawable/splash_layer</item>\n        <item name=\"android:windowNoTitle\">true</item>\n        <item name=\"android:windowActionBar\">false</item>\n        <item name=\"windowNoTitle\">true</item>\n        <item name=\"windowActionBar\">false</item>\n        <item name=\"android:statusBarColor\">#ffffff</item>\n        <item name=\"android:windowLightStatusBar\">true</item>\n        <item name=\"android:windowLayoutInDisplayCutoutMode\">shortEdges</item>\n        <item name=\"android:windowFullscreen\">true</item>\n    </style>\`); fs.writeFileSync(p, x);"
 
       - name: Decode Keystore
         id: decode_keystore
@@ -152,7 +186,7 @@ jobs:
       - name: Generate Custom Icons & Splash Screens
         working-directory: apps/lupine-notes-and-tools/web
         run: |
-          npx --yes @capacitor/assets generate --ios --splashBackgroundColor "#1e1e2e" --splashBackgroundColorDark "#111116"
+          npx --yes @capacitor/assets generate --ios --splashBackgroundColor "#ffffff" --splashBackgroundColorDark "#ffffff"
 
       - name: Build iOS Xcode App (Simulator)
         working-directory: apps/lupine-notes-and-tools/web/ios/App

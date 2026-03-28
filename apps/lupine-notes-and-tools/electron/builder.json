@@ -51,7 +51,7 @@
     "allowToChangeInstallationDirectory": true
   },
   "mac": {
-    "target": ["zip", "mas", "dmg"],
+    "target": ["zip", "dmg"],
     "icon": "apps/lupine-notes-and-tools/electron/osx/icon.icns",
     "category": "public.app-category.lifestyle",
     "darkModeSupport": true,

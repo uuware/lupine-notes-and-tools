@@ -4,7 +4,6 @@
 node_modules
 /.pnp
 .pnp.js
-package-lock.json
 
 # misc
 .DS_Store
@@ -24,4 +23,5 @@ yarn-error.log*
 # build
 /dist
 
-dev/example.com+4*
+dev/example.com*
+apps/lupine-notes-and-tools/web/android

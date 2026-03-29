@@ -24,4 +24,3 @@ yarn-error.log*
 /dist
 
 dev/example.com*
-apps/lupine-notes-and-tools/web/android

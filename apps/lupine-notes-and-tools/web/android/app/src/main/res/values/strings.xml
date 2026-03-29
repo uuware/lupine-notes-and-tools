@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Lupine Notes</string>
+    <string name="title_activity_main">Lupine Notes</string>
+    <string name="package_name">com.uuware.lupinenotesandtools</string>
+    <string name="custom_url_scheme">com.uuware.lupinenotesandtools</string>
+</resources>

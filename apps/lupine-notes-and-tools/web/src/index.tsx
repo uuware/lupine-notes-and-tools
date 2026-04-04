@@ -32,6 +32,9 @@ if (isFrontEnd() && webEnv('NODE_ENV', '') === 'development') {
   debugWatch(webEnv('API_PORT', 0));
 }
 
+import { appListeners } from './services/app-listeners';
+appListeners();
+
 const pageRouter = new PageRouter();
 pageRouter.setFramePage({ component: AppResponsiveFrame, placeholderClassname: 'user-page-placeholder' });
 pageRouter.use('/finance', FinancePage);

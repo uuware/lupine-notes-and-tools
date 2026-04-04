@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "lupine.api": "^1.1.82",
-    "lupine.components": "^1.1.35",
+    "lupine.components": "^1.1.36",
     "lupine.web": "^1.1.16"
   },
   "devDependencies": {

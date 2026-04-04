@@ -9,12 +9,18 @@ const getSiteTitle = async () => 'My Note App';
 const getSiteFooter = async () => '© 2026 My Note App';
 
 export const AppResponsiveFrame = async (placeholderClassname: string, vnode: VNode<any>) => {
+  // special login for github pages
+  let subDir = '';
+  if (typeof window !== 'undefined' && window.location.hostname === 'uuware.github.io') {
+    // first section is subDir
+    subDir = '/' + window.location.pathname.split('/')[1];
+  }
   const mobileBottomMenu = [
-    { icon: 'ma-home-outline', url: '/', text: 'Notes' },
-    { icon: 'icon-finance', url: '/finance', text: 'Finance' },
-    { icon: 'ma-book-outline', url: '/diary', text: 'Diary', topout: true },
-    { icon: 'ma-tools', url: '/tools', text: 'Tools' },
-    { icon: 'ma-account-cog-outline', url: '/mine', text: 'Mine' },
+    { icon: 'ma-home-outline', url: subDir + '/', text: 'Notes' },
+    { icon: 'icon-finance', url: subDir + '/finance', text: 'Finance' },
+    { icon: 'ma-book-outline', url: subDir + '/diary', text: 'Diary', topout: true },
+    { icon: 'ma-tools', url: subDir + '/tools', text: 'Tools' },
+    { icon: 'ma-account-cog-outline', url: subDir + '/mine', text: 'Mine' },
   ];
 
   const layout: 'sidebar' | 'tabs' = (localStorage.getItem('app-layout') as any) || 'tabs';

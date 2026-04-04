@@ -1,10 +1,18 @@
 # AI Context for Lupine.js
 
+**[CRITICAL SAFEGUARDS FOR CODE MODIFICATION]**
+When performing multi-line code refactoring or replacement operations (`replace_file_content` / `multi_replace_file_content`), massive block-level overwrites and arbitrary code restructuring are **STRICTLY PROHIBITED**!
+
+- Before making any modifications, you MUST invoke `view_file` or `grep_search` to verify the exact, up-to-date file structure and line numbers.
+- The `StartLine` and `EndLine` range MUST be restricted strictly to the absolute minimum lines you intend to modify or delete.
+- If you are merely inserting new code (e.g., adding a button or appending logic), target ONLY the immediately preceding line or bracket as your anchor. You are strictly forbidden from wrapping innocent, unmodified surrounding code into the `Replacement` payload. Violating this red line causes severe production accidents!
+
+
 **SYSTEM ROLE**: You are an expert developer in `lupine.js`, a custom TypeScript full-stack framework.
 
 **🛑 CRITICAL WARNINGS 🛑**
 
-1.  **`useState` EXISTS but rerenders the whole component**: Use it for simple/small components. For complex or large components, prefer `HtmlVar` for surgical, partial updates.
+1.  **`useState` EXISTS but rerenders the whole component**: Use it for simple/small components. For complex or large components, prefer `HtmlVar` for surgical, partial updates. **WARNING**: Because `useState` causes the entire parent component to re-render, any uncontrolled inner components/DOM elements that haven't explicitly saved their transient state will be abruptly reset to their default props. If you encounter bugs where interactive components (like toggles, inputs, animations) unexpectedly revert to their original state and lose data upon clicking or typing elsewhere, always check if a `useState` trigger in the parent is causing an unintended full reload.
 2.  **NO VIRTUAL DOM STATE by default**: Without `useState`, changing a variable DOES NOT re-render the component. You must manually update `HtmlVar.value`.
 3.  **NO CONTROLLED INPUTS**: Do not bind `value={state}`. Read values from DOM on submit.
 
@@ -61,6 +69,32 @@ Supports nesting and media queries. **Prefer this over inline styles.** Define y
 ### Global Variables (Theming) & Dark Mode Compatibility
 
 **NEVER hardcode colors** (e.g., `#000`, `#fff`, `#f0f0f0`). Always use CSS variables to support Dark/Light modes. If you must use a fallback, wrap it: `var(--primary-bg-color, #fff)`.
+
+**Defining Variables for Modes in CSS-in-JS**:
+Since Lupine.js uses a CSS-in-JS styling approach, when you need to define or override CSS variables specifically for light and dark modes within a component, use the `[data-theme="light" i]` and `[data-theme="dark" i]` selectors. **CRITICAL**: Because `CssProps` scopes styles by default, you MUST separate these mode styles into their own object and bind them using `bindGlobalStyle` with `noTopClassName = true` (the 4th argument).
+
+```typescript
+// 1. Separate theme variables into their own CSS object
+const cssTheme: CssProps = {
+  '[data-theme="light" i]': {
+    '--my-comp-bg-color': '#e6e6e6',
+  },
+  '[data-theme="dark" i]': {
+    '--my-comp-bg-color': 'var(--primary-accent-color)',
+  },
+};
+// 2. Bind globally. Param 4 (noTopClassName) MUST be true to prevent injecting a namespace prefix.
+bindGlobalStyle('my-comp-theme', cssTheme, false, true);
+
+// 3. Use the variable in your standard component styles
+const css: CssProps = {
+  '.&-element': {
+    backgroundColor: 'var(--my-comp-bg-color)',
+  }
+};
+// Bind your component styles normally
+bindGlobalStyle('my-comp-main', css);
+```
 
 #### 🎨 Color Variable Semantics (CRITICAL FOR DARK MODE)
 
@@ -136,29 +170,20 @@ export const MyComponent = () => {
 2.  **In JSX `class` attributes**: Add `class="&-item"`. You can still mix native classes: `class="row-box &-item"`.
 3.  **In DOM Queries**:
     - **🚨 NEVER use `document.querySelector('.&-item')` or `element.querySelector('.&-item')`**. Standard browser APIs DO NOT understand the `&` symbol and will fail to find the element.
-    - Use **`ref.$('.&-item')`** (WITH leading dot) to get the first matching element. The underlying logic simply replaces `&` with the generated ID (e.g. `l1234`), so this correctly translates to querying `.l1234 .l1234-item` which safely finds descendants within the current component's isolated namespace.
+    - Use **`ref.$('.&-item')`** (WITH leading dot) to get the first matching element. The underlying logic replaces `&` with the generated CSS ID, so this correctly translates to querying `.l1234 .l1234-item` which safely finds descendants within the current component's isolated namespace.
     - Use **`ref.$all('.&-item')`** to get a `NodeList` of all matching descendants within the component.
 
-## 4. CSS Placement Strategies: `css={}` vs `bindGlobalStyle`
+## 4. CSS Placement Strategies & Sharing Scopes
 
-Lupine.js provides two main ways to inject component CSS. Choosing the right one is critical for performance and DOM cleanliness.
+Lupine.js provides two main ways to inject component CSS (`css={}` vs `bindGlobalStyle`). Additionally, you must actively manage how dynamic separated DOM chunks share the same CSS Scope.
 
 ### Strategy A: The `css={}` Prop (Dynamic / Single-Use)
 
 **Best for**: Pages, views, or high-level containers that are only rendered once per screen.
 
-When you pass `css={css}` to a JSX element, Lupine automatically evaluates it and injects a new `<style>` tag directly preceding or wrapping that specific DOM element. It uses the **Ampersand (`&`) Pattern** (replacing `&` with a unique ID `l1234` generated on every render) to ensure complete scoping.
-
-**Pros**: Perfect isolation. You can safely style dynamic children easily.
-**Cons**: If you render 100 items using `css={}`, you will inject 100 identical `<style>` blocks into the DOM, severely bloating the page.
-
-```typescript
-export const MyUniquePage = () => {
-  // Styles apply directly to the root element
-  const css = { padding: '10px' };
-  return <div css={css}>...</div>;
-};
-```
+When you pass `css={css}` to a JSX element, Lupine automatically evaluates it and injects a new `<style>` tag directly wrapping that element.
+- **Pros**: Perfect isolation.
+- **Cons**: If you render 100 items using `css={}`, it will inject 100 identical `<style>` blocks into the DOM, severely bloating the page.
 
 ### Strategy B: `bindGlobalStyle` (Reusable Components)
 
@@ -167,81 +192,55 @@ export const MyUniquePage = () => {
 `bindGlobalStyle`, combined with `getGlobalStylesId`, places the `<style>` block in the `<head>` of the document **exactly once**. All instances of the component share the same CSS class names, but those names are still guaranteed to be collision-free!
 
 **How it works seamlessly with `&`**:
-
-1. You generate a unique ID based on the `CssProps` content (this ID remains identical for every instance of the component): `const globalCssId = getGlobalStylesId(css);`. **CRITICAL**: This MUST be called _inside_ the component function body, not at the module root level, because it depends on the rendering context (themes, SSR scope) being fully initialized.
-2. You bind the style block globally once: `bindGlobalStyle(globalCssId, css);`
-3. You assign this ID to the component's `ref` so Lupine knows what to replace `&` with: `const ref: RefProps = { globalCssId };`
-4. Use `class="&-item"` normally. Lupine replaces `&` with the identical `globalCssId` across all instances!
-
-**Pros**: Highly efficient. Rendering 100 buttons only generates 1 style block. Completely safe from class name collisions.
-**Cons**: All instances of the component literally share the same CSS class names. If an instance needs a unique visual variation, you must use inline `style={{}}` overrides.
-
-```typescript
-import { bindGlobalStyle, getGlobalStylesId, CssProps, RefProps } from 'lupine.web';
-
-export const ToggleButton = (props: { color?: string; disabled?: boolean }) => {
-  const css: CssProps = {
-    // 1. Top-level properties apply directly to the root element.
-    // Do NOT wrap these in '.&-container'
-    padding: '10px',
-    color: 'var(--primary-color)',
-
-    // 2. You can mix nested modifiers for the root element:
-    '&.disabled': { opacity: '0.5' },
-
-    // 3. Or target specific inner children:
-    '.&-inner': { fontWeight: 'bold' },
-  };
-
-  // 4. Generate the ID and bind it globally (Call INSIDE the component!)
-  const tabGlobalCssId = getGlobalStylesId(css);
-  bindGlobalStyle(tabGlobalCssId, css);
-
-  // 5. Assign the global ID to the reference
-  const ref: RefProps = {
-    globalCssId: tabGlobalCssId,
-  };
-
-  return (
-    <div ref={ref} class={props.disabled ? 'disabled' : ''} style={{ backgroundColor: props.color }}>
-      <span class='&-inner'>Click Me</span>
-    </div>
-  );
-};
-```
-
-### ⚠️ IMPORTANT: Hardcoded Namespace IDs vs `getGlobalStylesId`
-
-While using `getGlobalStylesId` combined with the `&` pattern is the most robust approach, you may sometimes use a hardcoded string as the namespace ID: `bindGlobalStyle('my-custom-component', css)`.
-
-If you do this, Lupine will generate CSS targeting `.my-custom-component`. Therefore, **you MUST ensure that your root JSX element explicitly includes this exact class name**, otherwise the top-level CSS properties will fail to apply.
-
-**CORRECT Example (Hardcoded ID):**
-
-```typescript
-const css: CssProps = { padding: '10px' };
-// ID is 'my-custom-component'
-bindGlobalStyle('my-custom-component', css);
-
-// Root element MUST have class='my-custom-component'
-return <div class='my-custom-component'>...</div>;
-```
+1. Generate an ID based on the `CssProps` content: `const globalCssId = getGlobalStylesId(css);`. (Call this *inside* the component!)
+2. Bind the style block globally once: `bindGlobalStyle(globalCssId, css);`
+3. Assign this ID to the component's `ref` to link the scope: `const ref: RefProps = { globalCssId };` / `<div ref={ref}>`
+4. Use `class="&-item"` normally. Lupine replaces `&` with the identical `globalCssId` across all instances.
 
 ### ⚠️ IMPORTANT: The "Static `CssProps`" Rule
 
-Because `bindGlobalStyle(getGlobalStylesId(css), css)` injects your `<style>` tags into the `<head>` of the document **globally**, your `CssProps` definition **MUST** be entirely static and shared across all instances of a component.
+Because `bindGlobalStyle` injects your `<style>` tags into the `<head>` globally, your `CssProps` definition **MUST** be entirely static.
 
-**ANTI-PATTERN:** Putting React variables (like `isVertical`, `size`, `color`) directly inside the `CssProps` object structure.
+**ANTI-PATTERN:** Putting variables (like `isVertical`, `size`, `color`) directly inside the `CssProps` object structure. Every time the component re-renders with a different prop, it will generate conflicting CSS IDs and the latter will overwrite the former's styles, corrupting the layout. Define one immutable `const css: CssProps = {...}` and handle visual variations by appending standard class names to your root element (`class={isVertical ? '&-vertical' : '&-horizontal'}`) and map those variations inside your static `CssProps`.
 
-- **Why it's bad:** Every time the component re-renders with a different prop, `getGlobalStylesId` calculates a brand new hash. `bindGlobalStyle` then injects a duplicate `<style>` block into the head. If a user places two `Slider`s on the same page (one vertical, one horizontal), they will generate conflicting CSS IDs and the latter will aggressively overwrite the former's styles, corrupting the layout.
+### 🔗 Sharing the same CSS scope (`globalCssId`) among Separated DOMs
 
-**CORRECT PATTERN:** Define one immutable `const css: CssProps = {...}` outside of any reactive dependencies.
+If your component divides its logic so that some internal floating DOM elements are rendered dynamically later (e.g. through a function passed to `HtmlVar`) *separated* from the root return statement, the inner DOM will automatically generate a **new, mismatched** CSS ID if not linked. Its internal `class="&-item"` references will break and styles will fail to apply.
 
-- Handle visual variations by appending standard class names to your root element (`class={isVertical ? 'vertical' : 'horizontal'}`).
-- In your static CSS definition, target these root modifier classes by prefixing the namespace `&` with the modifier: `&.vertical .&-track` or `&.horizontal .&-fill`.
-- If you need precise, dynamic position coordinates (e.g. mouse tracking, progress percentages), calculate them in your JavaScript hook and inject them into standard DOM elements using `el.style.setProperty('--my-var', val)` or direct assignment, while your CSS relies purely on standard layout rules.
-- Since css supports nested selectors (CSS-in-JS), the efficient approach is to define all CSS in one css prop on the top-level/root tag of a component, using class names on children. Avoid spreading inline css props across child elements.
+To force separated local DOM partitions to share the exact same `&` CSS Scope as their parent page, explicitly share a globally unique CSS ID using `globalStyleUniqueId()`:
 
+```tsx
+import { globalStyleUniqueId, HtmlVar, RefProps, CssProps } from 'lupine.components';
+
+export const HomePage = () => {
+    // 1. Generate a manual ID for the container scope beforehand
+    const cssId = globalStyleUniqueId();
+    
+    const listDom = new HtmlVar('');
+
+    const renderList = () => {
+        // 2. Explicitly bind the inner detached DOM to the parent's globalCssId
+        listDom.value = (
+            <div ref={{ globalCssId: cssId }} class="&-bundle-container">
+                <div class="&-bundle-name">Basic Bundle</div>
+            </div>
+        );
+    };
+
+    const ref: RefProps = { 
+        globalCssId: cssId, // 3. The parent registers the ID as well
+        onLoad: async () => renderList()
+    };
+    const css: CssProps = { '.&-bundle-name': { color: 'red' } };
+
+    return (
+        <div css={css} ref={ref}>
+            {/* 4. The dynamically injected nodes will properly map their &- prefixes */}
+            {listDom.node} 
+        </div>
+    );
+};
+```
 ---
 
 ## 5. Common Patterns ("The Lupine Way")
@@ -294,6 +293,24 @@ const MyPage = () => {
       {listDom.node}
     </div>
   );
+};
+```
+### Page Navigation (`initializePage` vs `<a>`)
+
+In the Lupine.js system, all standard `<a>` HTML tags are automatically intercepted. If the link points to an internal route, Lupine safely binds it to `_lupineJs.initializePage(href)` behind the scenes to perform a seamless single-page application (SPA) transition without a full browser reload.
+
+When performing imperative or programmatic routing via JavaScript (e.g. clicking a `<button>` or a `div`), **DO NOT** use `window.location.href = '/path'`, as this forces a harsh full-page reload. 
+
+Instead, import and use `initializePage`:
+```typescript
+import { initializePage } from 'lupine.web';
+
+const navigate = () => {
+    // CORRECT: Seamless SPA transition
+    initializePage('/play/diff01/1');
+    
+    // ERROR / ANTI-PATTERN: Forces full browser reload unless explicitly desired
+    // window.location.href = '/play/diff01/1';
 };
 ```
 
@@ -392,6 +409,14 @@ const Parent = () => {
 - **`lupine.web` (Frontend)**:
   - `NotificationMessage.sendMessage('Msg', NotificationColor.Success)`
   - `getRenderPageProps().renderPageFunctions.fetchData('/api/...')`
+  - Retrieve dynamic URL parameters explicitly via `props.urlParameters['paramName']`.
+  - **Environment vs Database Config**:
+    - `webEnv('API_BASE_URL', '')`: Use this mapping to synchronously read statically injected environment variables defined in `.env` (like `WEB.xxx`).
+    - `await WebConfig.get('siteLogo')`: Use this for dynamic configurations. It works asynchronously by fetching data from the backend server first, then caches it for subsequent calls.
+  - **Path Parameter Syntax**:
+    - Mandatory parameters use `:` (e.g., `pageRouter.use('/page/:id', PlayPage)`).
+    - Fixed parameters use `/fixed-parameter/` (e.g., `pageRouter.use('/page/:id/detail/', PlayPage)`), `detail` is a fixed parameter.
+    - Optional parameters use `?` (e.g., `/page/:userId/?option1/?option2`). Once an optional parameter is declared, all subsequent route sections become optional (It's not a query string).
 
 ## 6. Coding Standards & Gotchas
 
@@ -428,12 +453,13 @@ export const DemoIcons = {
 ```
 
 **2. Override the specific `.ifc-icon` via CSS Masking:**
-Use the `maskImage` property wrapped in `url()` to apply the SVG data to the icon class. This ensures it inherits colors (`currentColor`) properly.
+Use the `-webkit-mask-image` and `maskImage` property wrapped in `url()` to apply the SVG data to the icon class. This ensures it inherits colors (`currentColor`) properly.
 
 ```typescript
 const css: CssProps = {
   // Target the specific system icon class you wish to override
   '.ifc-icon.ma-close': {
+    '-webkit-mask-image': `url("${DemoIcons['ma-close']}")`,
     maskImage: `url("${DemoIcons['ma-close']}")`,
     // If needed, specify mask sizing properties:
     // maskRepeat: 'no-repeat',
@@ -448,7 +474,7 @@ const css: CssProps = {
 When creating a new Cross-Platform App using `lupine.js`, follow this standard procedure for scaffolding the entry point, navigation, and icons:
 
 1. **Custom Navigation Icons (`app-icons.ts`)**:
-   Instead of using the default icon font, you should export SVG Data URIs for your app's specific icons from `app-icons.ts`. Use a `reduce` function to generate the appropriate `CssProps` with `maskImage: 'url("' + svg + '")'` to override the `.ifc-icon.[icon-name]` classes. Avoid using backticks (\"\`\") when injecting SVG variables inside the maskImage URL to prevent escaping issues.
+   Instead of using the default icon font, you should export SVG Data URIs for your app's specific icons from `app-icons.ts`. Use a `reduce` function to generate the appropriate `CssProps` with `-webkit-mask-image: url("' + svg + '")'` and `maskImage: 'url("' + svg + '")'` to override the `.ifc-icon.[icon-name]` classes. Avoid using backticks (\"\`\") when injecting SVG variables inside the maskImage URL to prevent escaping issues.
 
 2. **Base Styles (`base-css.ts`)**:
    Create a `styles/base-css.ts` file that imports the dynamic icon styles (from `app-icons.ts`), and defines any placeholder wrappers (e.g., `.user-page-placeholder` having `width: '100%', height: '100%'`). Use `bindGlobalStyle('comm-css', baseCss, false, true)` in the index file to register these.
@@ -523,3 +549,79 @@ For interactive lists, `createDragUtil()` from `lupine.components` handles compl
   - When opening a sliding frame _from within_ another sliding frame (e.g., opening a Settings About page from the Settings root page), you **MUST** define a new local hook `const innerSliderHook: SliderFrameHookProps = {};` and mount a _new_ `<SliderFrame hook={innerSliderHook} />` inside the parent slider component.
   - Using the parent's hook will replace the parent's content instead of sliding a new frame over it.
   - Wrap multiple children in `<></>` or a `<div>` if they are direct children to satisfy single `VNode` rendering constraints.
+
+### E. Dialogs & Action Sheets (Replacing Native Alerts)
+
+**DO NOT USE browser native `alert()`, `confirm()`, or `prompt()`**. Instead, use the native `ActionSheet` promises from `lupine.components` for a modern, mobile-friendly overlay experience:
+
+1. **Option Selection (`ActionSheetSelectPromise`)** (Replaces `confirm()` or complex choices):
+   ```typescript
+   import { ActionSheetSelectPromise } from 'lupine.components';
+   
+   const index = await ActionSheetSelectPromise({
+     title: 'Delete this saved game?', // Optional
+     options: ['Delete', 'Edit'],
+     cancelButtonText: 'Cancel',
+   });
+   
+   if (index === 0) { /* User clicked Delete (Index of options array) */ }
+   if (index === -1) { /* User clicked Cancel or tapped background */ }
+   ```
+
+2. **Simple Messages (`ActionSheetMessagePromise`)** (Replaces `alert()`):
+   ```typescript
+   import { ActionSheetMessagePromise } from 'lupine.components';
+   
+   await ActionSheetMessagePromise({
+     title: 'Success',      // Optional
+     message: 'Your profile has been saved.',
+     closeButtonText: 'OK'  // Optional, defaults to a close behavior
+   });
+   ```
+
+3. **User Input (`ActionSheetInputPromise`)** (Replaces `prompt()`):
+   ```typescript
+   import { ActionSheetInputPromise } from 'lupine.components';
+   
+   const value = await ActionSheetInputPromise({
+     title: 'Enter your name',
+     // placeholder: 'Player 1', // Optional
+     confirmButtonText: 'Submit', // Optional
+     cancelButtonText: 'Cancel'   // Optional
+   });
+   
+   if (value !== null) { /* User submitted a string */ }
+   ```
+
+4. **Other Available Prompts (Investigate their API via `lupine.components` when needed)**:
+   - `ActionSheetMultiSelectPromise`: For multiple checkbox selections.
+   - `ActionSheetTimePicker`: For selecting a time.
+   - `ActionSheetDatePicker`: For selecting a date.
+
+### F. Hardware Back Button Handling (`data-back-action`)
+
+When building mobile interfaces, users expect the physical hardware "Back" button (or swipe-from-edge gesture) to gracefully dismiss overlays, dialogs, sliders, or menus—similar to pressing the `ESC` key on a desktop.
+
+**The Rule**: Whenever you implement a cancel button, a close icon (`X`), or a back chevron (`<`) in a mobile overlay or frame, you **MUST** attach the `data-back-action` attribute using the `backActionHelper`.
+
+```typescript
+import { backActionHelper } from 'lupine.components';
+
+export const MyCloseButton = ({ onClose }) => {
+  return (
+    <i 
+      class="ifc-icon ma-close"
+      // Generate a unique ID for the back stack
+      data-back-action={backActionHelper.genBackActionId()} 
+      onClick={onClose}
+    ></i>
+  );
+};
+```
+
+**How it works**:
+- When the hardware back button is pressed, the underlying system automatically queries the DOM for all elements with `[data-back-action^="bb-"]`.
+- It finds the most recently created component (the top-most overlay) and automatically triggers a `.click()` event on it.
+- **Dynamic Mounting vs Static**: 
+  - For components that are injected and removed dynamically (like `<ActionSheet />` or `<FloatWindow />`), simply attaching the property to the React/JSX node is sufficient.
+  - For static components that always remain in the DOM but toggle visibility (like an off-canvas sidebar), you must dynamically add/remove the attribute in Javascript (`el.setAttribute` / `el.removeAttribute`) to prevent the back button from intercepting events when the menu is actually closed.

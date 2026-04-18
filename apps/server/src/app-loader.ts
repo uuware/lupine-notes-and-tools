@@ -1,4 +1,4 @@
-import { appLoader } from 'lupine.api/app-loader';
+import { serverLoader } from 'lupine.api/server-loader';
 import path from 'path';
 
-appLoader.startApp(path.join(__dirname, './index.js'));
+serverLoader.startApp(path.join(__dirname, './index.js'));
